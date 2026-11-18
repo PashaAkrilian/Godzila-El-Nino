@@ -132,53 +132,40 @@ Drought Risk Forecasting
 
 ---
 
-# Model Development
+# Repository Structure
 
-Several forecasting approaches were evaluated:
-
-| Model | R² Score |
-|---------|---------:|
-| ARIMA | -1.6806 |
-| Prophet | -0.4919 |
-| Random Forest | 0.7625 |
-| LightGBM | 0.7842 |
-| XGBoost | 0.8052 |
-
-XGBoost achieved the strongest baseline performance and was selected for further optimization. :contentReference[oaicite:1]{index=1}
-
----
+```text
+godzila-el-nino.ipynb      Notebook tunggal: pipeline Python + analisis R (sel terakhir)
+data/                      master_dataset_godzilla_elnino_2000_2025.csv
+docs/                      Laporan_Akhir.pdf, Slide_Presentasi.pdf
+```
 
 # Validation Strategy
 
-To avoid temporal leakage, the project uses:
+- Split kronologis 80/20: train 2001-2020, test 2021-2025 (test tidak disentuh saat tuning maupun early stopping).
+- Tuning Optuna (50 trial, `TPESampler(seed=42)`) dengan `TimeSeriesSplit(5)` pada data train.
+- Early stopping memakai 15% ekor data train sebagai validasi.
+- **Lead 3 bulan:** fitur sampai bulan t-3 memprediksi SDCI bulan t.
+- **Tanpa kebocoran target:** SDCI disusun dari NDVI, LST, dan curah hujan, sehingga variabel itu pada bulan yang sama tidak dipakai. Prediktor hanya turunan ONI/`sst_anomaly` (lag, rolling, EMA, momentum, akselerasi) dan musiman bulan.
+- Hasil reproducible: 5 run berturut-turut di Kaggle menghasilkan angka identik.
 
-## Walk-Forward Validation
+# Model Performance (test 2021-2025, lead 3 bulan)
 
-5-fold chronological validation:
+| Model | R² test |
+|---|---:|
+| XGBoost (Optuna) | 0.0374 |
+| LightGBM | -0.0036 |
+| Random Forest | -0.0228 |
+| Klimatologi (rata-rata bulanan) | -0.0505 |
+| XGBoost default | -0.1697 |
+| Prophet | -0.4297 |
+| ARIMA | -1.0989 |
 
-```text
-Fold 1 : 2001–2004 → 2004–2008
-Fold 2 : 2001–2008 → 2008–2011
-Fold 3 : 2001–2011 → 2011–2014
-Fold 4 : 2001–2014 → 2014–2017
-Fold 5 : 2001–2017 → 2017–2020
-```
+**Temuan utama:** setelah kebocoran target dibuang, ENSO (ONI/SST) tidak menambah daya prediksi SDCI nasional di atas pola musiman pada lead 3 bulan. Analisis R di notebook yang sama memberi kesimpulan serupa (OLS ENSO lag-3 + musiman R² -0.0554 vs klimatologi -0.0505, identik dengan hasil Python).
 
-This methodology simulates real-world forecasting scenarios and improves model generalization. :contentReference[oaicite:2]{index=2}
+Versi awal proyek melaporkan R² test 0.8257. Angka itu berasal dari fitur NDVI/LST/curah hujan bulan yang sama, yaitu komponen penyusun SDCI (regresi linier dari ketiganya saja menghasilkan R² = 1.0), sehingga bukan kemampuan prediksi.
 
----
-
-# Model Performance
-
-Final optimized model performance:
-
-| Metric | Train | Test |
-|----------|---------:|---------:|
-| RMSE | 0.0104 | 0.0404 |
-| MAE | 0.0080 | 0.0306 |
-| R² Score | 0.9916 | 0.8257 |
-
-The model successfully explains more than **82% of national drought variability** using climate-based predictors alone. :contentReference[oaicite:3]{index=3}
+**Proyeksi 2026 (skenario):** ONI naik linear 0.15 per bulan adalah asumsi, bukan forecast ONI. Puncak SDCI jatuh pada September 2026 dengan nilai 0.529 (rentang 10%-90%: 0.41-0.68). Nilai itu mendekati titik terendah musiman biasa dan berada di dalam rentang normal.
 
 ---
 
@@ -204,6 +191,8 @@ This enables stakeholders to understand which climate variables most strongly in
 - SHAP
 - Scikit-Learn
 - Google Earth Engine
+- LightGBM, Prophet, Statsmodels
+- R (lmtest, sandwich, ggplot2)
 - Matplotlib
 - Seaborn
 
