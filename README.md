@@ -135,10 +135,16 @@ Drought Risk Forecasting
 # Repository Structure
 
 ```text
-godzila-el-nino.ipynb      Notebook tunggal: pipeline Python + analisis R (sel terakhir)
-data/                      master_dataset_godzilla_elnino_2000_2025.csv
-docs/                      Laporan_Akhir.pdf, Slide_Presentasi.pdf
+notebooks/godzila-el-nino.ipynb   Notebook tunggal: pipeline Python + analisis R (sel terakhir)
+R/analisis_R.Rmd              Analisis R format R Markdown (Knit di RStudio)
+data/                         master_dataset_godzilla_elnino_2000_2025.csv
+docs/                         Laporan_Akhir.pdf, Slide_Presentasi.pdf, analisis_R.html (hasil render)
 ```
+
+# How to Run
+
+- **Python (Kaggle):** buka `notebooks/godzila-el-nino.ipynb` di Kaggle dengan dataset `godzila-el-nino-indonesia`, lalu Run All. Seed tetap (42), jadi hasilnya identik di tiap run. Sel terakhir menjalankan analisis R lewat `Rscript`.
+- **R (RStudio):** buka `R/analisis_R.Rmd` lalu Knit. Hasil render ada di `docs/analisis_R.html`.
 
 # Validation Strategy
 

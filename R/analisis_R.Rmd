@@ -1,0 +1,138 @@
+---
+title: "Lead-Lag ONI terhadap SDCI Indonesia (2000-2025)"
+subtitle: "Analisis statistik dengan R - Team LogLoss, UNNES"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 3.6, dpi = 120)
+for (p in c("lmtest", "sandwich", "dplyr", "tidyr", "ggplot2"))
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p, repos = "https://cloud.r-project.org")
+suppressMessages({library(dplyr); library(tidyr); library(ggplot2); library(lmtest); library(sandwich)})
+set.seed(42)
+```
+
+## 1. Data dan anomali SDCI
+
+Data bulanan 2000-01 sampai 2025-12 (312 baris). Anomali SDCI adalah SDCI dikurangi rata-rata bulanannya (klimatologi), supaya pola musiman tidak mengaburkan hubungan dengan ONI.
+
+```{r data}
+# Path relatif terhadap folder R/ (lokasi file ini). Di Kaggle: ganti path ke data_master.csv.
+f <- "../data/master_dataset_godzilla_elnino_2000_2025.csv"
+d <- read.csv(f); d$date <- as.Date(d$date_key); d$m <- factor(format(d$date, "%m"))
+reg <- c("Indo", "Sumatera", "Jawa", "Kalimantan", "Sulawesi", "NusaTenggara", "Maluku", "Papua")
+for (r in reg) { v <- paste0("SDCI_", r); d[[paste0("A_", r)]] <- d[[v]] - ave(d[[v]], d$m) }
+summary(d[, c("SDCI_Indo", "ONI", "sst_anomaly")])
+```
+
+```{r fig-ts, fig.cap="Anomali SDCI nasional dan ONI (z-score)."}
+ggplot(d, aes(date)) +
+  geom_line(aes(y = scale(A_Indo)[, 1], colour = "Anomali SDCI")) +
+  geom_line(aes(y = scale(ONI)[, 1], colour = "ONI")) +
+  labs(x = NULL, y = "z-score", colour = NULL) + theme_minimal(base_size = 11) + theme(legend.position = "top")
+```
+
+## 2. Korelasi silang ONI(t) dan anomali SDCI(t+h)
+
+```{r crosscorr}
+cc <- do.call(rbind, lapply(reg, function(r) data.frame(wilayah = r, h = 0:12,
+  r = sapply(0:12, function(h) cor(head(d$ONI, nrow(d) - h), tail(d[[paste0("A_", r)]], nrow(d) - h))))))
+cc %>% group_by(wilayah) %>% slice_min(r, n = 1) %>% ungroup() %>% as.data.frame()
+```
+
+```{r fig-cc, fig.cap="Korelasi silang per wilayah, lead 0-12 bulan."}
+ggplot(cc, aes(h, r, colour = wilayah)) + geom_hline(yintercept = 0, colour = "grey60") +
+  geom_line() + geom_point(size = 1) +
+  labs(x = "Lead (bulan)", y = "Korelasi ONI(t) vs anomali SDCI(t+h)", colour = NULL) + theme_minimal(base_size = 11)
+```
+
+Korelasi terkuat selalu di lead 0 dan bernilai negatif (-0,14 sampai -0,34): pengaruh ONI cepat melemah, bukan tertunda.
+
+## 3. Regresi lead dengan galat Newey-West
+
+```{r lead-reg}
+reg_h <- do.call(rbind, lapply(0:9, function(h) {
+  y <- tail(d$A_Indo, nrow(d) - h); x <- head(d$ONI, nrow(d) - h); m <- lm(y ~ x)
+  ct <- coeftest(m, vcov = NeweyWest(m, lag = 12, prewhite = FALSE))
+  data.frame(h = h, beta = ct[2, 1], se = ct[2, 2], p = ct[2, 4], R2 = summary(m)$r.squared)
+}))
+round(reg_h, 4)
+```
+
+```{r fig-beta, fig.cap="Koefisien ONI pada anomali SDCI(t+h), CI 95% Newey-West."}
+ggplot(reg_h, aes(h, beta)) + geom_hline(yintercept = 0, colour = "grey60") +
+  geom_ribbon(aes(ymin = beta - 1.96 * se, ymax = beta + 1.96 * se), alpha = .25) + geom_line() +
+  labs(x = "Lead h (bulan)", y = "Koefisien ONI (95% CI NW)") + theme_minimal(base_size = 11)
+```
+
+## 4. Uji kausalitas Granger (ONI ke anomali SDCI)
+
+```{r granger}
+sapply(c(3, 6, 9), function(k) grangertest(A_Indo ~ ONI, order = k, data = d)$`Pr(>F)`[2]) |>
+  setNames(paste("order", c(3, 6, 9))) |> round(4)
+```
+
+## 5. Peragaan kebocoran target (bukan model)
+
+SDCI dibangun dari NDVI, LST, dan curah hujan. Regresi linier dari ketiganya pada bulan yang sama memberi R² = 1, sehingga variabel itu tidak boleh menjadi prediktor.
+
+```{r leak}
+s <- floor(nrow(d) * .8); tr <- d[1:s, ]; te <- d[(s + 1):nrow(d), ]
+r2 <- function(f) { m <- lm(f, tr); p <- predict(m, te); 1 - sum((te$SDCI_Indo - p)^2) / sum((te$SDCI_Indo - mean(te$SDCI_Indo))^2) }
+c(komponen_SDCI = r2(SDCI_Indo ~ ndvi_Indo + lst_Indo + precip_Indo),
+  ONI_sst_bulan_sama = r2(SDCI_Indo ~ ONI + sst_anomaly)) |> round(4)
+```
+
+## 6. Model tanpa kebocoran (lead 3 bulan)
+
+Fitur ENSO digeser H = 3 bulan ditambah musiman bulan, OLS, split 80/20 pada sampel yang sama dengan notebook Python (297 bulan, test 60 bulan).
+
+```{r noleak}
+H <- 3; mk <- function(v) c(rep(NA, H), head(v, length(v) - H))
+d$ONI_H <- mk(d$ONI); d$sst_H <- mk(d$sst_anomaly); d$mom_H <- mk(c(NA, diff(d$ONI)))
+dd <- d[complete.cases(d[, c("ONI_H", "sst_H", "mom_H")]) & d$date >= as.Date("2001-04-01"), ]
+s2 <- floor(nrow(dd) * .8); tr2 <- dd[1:s2, ]; te2 <- dd[(s2 + 1):nrow(dd), ]
+r2b <- function(f) { m <- lm(f, tr2); p <- predict(m, te2); 1 - sum((te2$SDCI_Indo - p)^2) / sum((te2$SDCI_Indo - mean(te2$SDCI_Indo))^2) }
+c(n = nrow(dd), ENSO_lag3_musiman = r2b(SDCI_Indo ~ ONI_H + sst_H + mom_H + m), Klimatologi = r2b(SDCI_Indo ~ m)) |> round(4)
+```
+
+Kedua nilai R² mendekati nol dan model ENSO tidak lebih baik dari klimatologi.
+
+## 7. Evaluasi out-of-sample (jendela meluas, test 2021-2025)
+
+Setiap bulan uji diprediksi hanya dengan data yang sudah tersedia (pasangan ONI(j) dan SDCI(j+h) dengan j+h < t), dibandingkan dengan klimatologi bulanan.
+
+```{r oos}
+fc <- do.call(rbind, lapply(c(1, 3, 6, 9), function(h) {
+  n <- nrow(d); idx <- (s + 1):(n - h)
+  e <- sapply(idx, function(t) {
+    j <- 1:(t - 1 - h); dj <- data.frame(y = d$SDCI_Indo[j + h], oni = d$ONI[j], m = d$m[j + h])
+    mm <- lm(y ~ oni + m, dj); mc <- lm(y ~ m, dj)
+    nd <- data.frame(oni = d$ONI[t - h], m = d$m[t])
+    c(d$SDCI_Indo[t] - predict(mm, nd), d$SDCI_Indo[t] - predict(mc, nd))
+  })
+  data.frame(h = h, RMSE_ONI = sqrt(mean(e[1, ]^2)), RMSE_klim = sqrt(mean(e[2, ]^2)),
+             skill = 1 - mean(e[1, ]^2) / mean(e[2, ]^2), n = ncol(e))
+}))
+round(fc, 4)
+```
+
+`skill` negatif berarti model ONI tidak mengalahkan klimatologi pada semua lead.
+
+## 8. Heterogenitas wilayah
+
+```{r het}
+het <- do.call(rbind, lapply(reg, function(r) {
+  best <- cc$h[cc$wilayah == r][which.min(cc$r[cc$wilayah == r])]
+  y <- tail(d[[paste0("A_", r)]], nrow(d) - best); x <- head(d$ONI, nrow(d) - best); m <- lm(y ~ x)
+  ct <- coeftest(m, vcov = NeweyWest(m, lag = 12, prewhite = FALSE))
+  data.frame(wilayah = r, h = best, beta = ct[2, 1], p = ct[2, 4], R2 = summary(m)$r.squared)
+}))
+het %>% mutate(across(where(is.numeric), ~ round(.x, 4)))
+```
+
+Pengaruh ONI terbesar di Nusa Tenggara dan Jawa (koefisien -0,038 dan -0,035, p < 0,01); Papua, Maluku, dan Kalimantan tidak signifikan.
