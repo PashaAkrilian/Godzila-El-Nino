@@ -31,7 +31,7 @@ The key innovation of this research is the introduction of **Climate Kinematics 
 |--------|--------|
 | **Dimas Pasha Akrilian** | Team Leader, Data Scientist, Model Development |
 | **Shata Alwan Jalaluddin** | Data Engineering, Climate Feature Engineering |
-| **Aaron Christian Daniel** | Model Validation, Explainable AI |
+| **Galih Kusuma Wijaya** | Anggota tim |
 
 **Institution:** Universitas Negeri Semarang (UNNES)
 
@@ -136,9 +136,13 @@ Drought Risk Forecasting
 
 ```text
 notebooks/godzila-el-nino.ipynb   Notebook tunggal: pipeline Python + analisis R (sel terakhir)
-R/analisis_R.Rmd              Analisis R format R Markdown (Knit di RStudio)
-data/                         master_dataset_godzilla_elnino_2000_2025.csv
-docs/                         Laporan_Akhir.pdf, Slide_Presentasi.pdf, analisis_R.html (hasil render)
+R/analisis_R.Rmd                  Analisis R format R Markdown (Knit di RStudio)
+data/                             master_dataset_godzilla_elnino_2000_2025.csv
+artikel_smds/                     Artikel format SMDS: main.tex/main.pdf (English), main_id.tex/main_id.pdf (Indonesia),
+                                  figs/ dan figs_en/ (gambar), SMDSBib.bib, buat_figur.py
+docs/                             Laporan_Akhir.pdf, Slide_Presentasi.pdf (revisi), analisis_R.html
+docs/arsip/                       Slide_Presentasi_asli_canva.pdf (ekspor Canva asli)
+docs/slide_src/                   revisi_canva.py (menyunting PDF asli), hasil_kaggle_full.json, fonts/
 ```
 
 # How to Run
@@ -217,11 +221,6 @@ This enables stakeholders to understand which climate variables most strongly in
 - Feature Engineering
 - Data Integration
 
-### Aaron Christian Daniel
-- Validation Framework
-- Explainable AI
-- Model Evaluation
-
 ---
 
 # Future Work
@@ -245,7 +244,7 @@ This project is licensed under the MIT License.
 
 **Dimas Pasha Akrilian**  
 **Shata Alwan Jalaluddin**  
-**Aaron Christian Daniel**
+**Galih Kusuma Wijaya**
 
 Department of Statistics and Data Science  
 Faculty of Mathematics and Natural Sciences  

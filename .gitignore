@@ -6,3 +6,13 @@ __pycache__/
 .Rproj.user/
 *_cache/
 *_files/
+artikel_smds/*.aux
+artikel_smds/*.bbl
+artikel_smds/*.bcf
+artikel_smds/*.blg
+artikel_smds/*.fdb_latexmk
+artikel_smds/*.fls
+artikel_smds/*.log
+artikel_smds/*.out
+artikel_smds/*.run.xml
+artikel_smds/arsip_topik_lama/
