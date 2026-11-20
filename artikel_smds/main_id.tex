@@ -91,7 +91,7 @@ url=false
 %==================================
 
 \author{
-\begin{minipage}{\textwidth}
+\begin{minipage}{\dimexpr\textwidth-12pt\relax}
 \authorone,
 \authortwo,
 \authorthree,
@@ -111,7 +111,7 @@ $^1$ \affilone\\
 %==================================
 \begin{abstract}
 \sloppy
-Sistem peringatan dini kekeringan sering mengandalkan indikator El Ni\~no--Southern Oscillation (ENSO), tetapi seberapa jauh ENSO benar-benar memprediksi kekeringan nasional Indonesia jarang diuji dengan evaluasi yang bebas kebocoran target. Kami menganalisis 312 pengamatan bulanan (2000--2025) yang menggabungkan CHIRPS, MODIS (NDVI dan LST), NOAA OISST, dan Oceanic Ni\~no Index (ONI) dengan target Standardized Drought Condition Index (SDCI). Pada rancangan awal, XGBoost dengan 72 fitur mencapai $R^2$ uji 0,80, tetapi fitur tersebut memuat NDVI, LST, dan curah hujan pada bulan yang sama, yaitu komponen penyusun SDCI. Regresi linier dari ketiganya saja menghasilkan $R^2$ uji 1,000, sehingga angka itu bukan kemampuan prediksi. Setelah komponen itu dibuang dan fitur ENSO digeser tiga bulan, XGBoost hasil optimasi Bayesian dan validasi walk-forward hanya mencapai $R^2$ uji 0,037 pada 2021--2025, sedangkan klimatologi bulanan $-0{,}051$. Korelasi silang terkuat selalu berada pada lead nol (antara $-0{,}14$ dan $-0{,}34$ menurut wilayah) dan hilang pada lead tiga bulan atau lebih; koefisien regresi ONI signifikan hanya pada lead 0 dan 1 bulan, dan uji Granger tidak signifikan pada taraf 5\%. Pengaruh bulan yang sama paling kuat di Jawa dan Nusa Tenggara. Pada skenario ONI naik linear 0,15 per bulan, SDCI nasional terendah pada September 2026 sebesar 0,529 (rentang 10--90\% 0,41--0,68), tidak lebih kering daripada rata-rata historis September. ENSO karenanya lebih berguna untuk pemantauan serempak daripada peramalan tiga bulan ke depan, dan seluruh hasil dapat direproduksi dengan seed tetap.
+Sistem peringatan dini kekeringan sering mengandalkan indikator El Ni\~no--Southern Oscillation (ENSO), tetapi seberapa jauh ENSO benar-benar memprediksi kekeringan nasional Indonesia jarang diuji dengan evaluasi yang bebas kebocoran target. Kami menganalisis 312 pengamatan bulanan (2000--2025) yang menggabungkan CHIRPS, MODIS (NDVI dan LST), NOAA OISST, dan Oceanic Ni\~no Index (ONI) dengan target Standardized Drought Condition Index (SDCI). Pada rancangan awal, XGBoost dengan 72 fitur mencapai $R^2$ uji 0,80, tetapi fitur tersebut memuat NDVI, LST, dan curah hujan pada bulan yang sama, yaitu komponen penyusun SDCI. Regresi linier dari ketiganya saja menghasilkan $R^2$ uji 1,000, sehingga angka itu bukan kemampuan prediksi. Setelah komponen itu dibuang dan fitur ENSO digeser tiga bulan, XGBoost hasil random search dan validasi walk-forward hanya mencapai $R^2$ uji 0,070 pada 2021--2025, sedangkan klimatologi bulanan $-0{,}051$. Korelasi silang terkuat selalu berada pada lead nol (antara $-0{,}14$ dan $-0{,}34$ menurut wilayah) dan hilang pada lead tiga bulan atau lebih; koefisien regresi ONI signifikan hanya pada lead 0 dan 1 bulan, dan uji Granger tidak signifikan pada taraf 5\%. Pengaruh bulan yang sama paling kuat di Jawa dan Nusa Tenggara. Pada skenario ONI naik linear 0,15 per bulan, SDCI nasional terendah pada September 2026 sebesar 0,399 (rentang 10--90\% 0,36--0,54), di bawah rata-rata historis September (0,493) dan di atas ambang kritis 0,3, meskipun model belum terbukti mengalahkan klimatologi. ENSO karenanya lebih berguna untuk pemantauan serempak daripada peramalan tiga bulan ke depan, dan seluruh hasil dapat direproduksi dengan seed tetap.
 
 \end{abstract}
 
@@ -125,7 +125,7 @@ Kekeringan akibat El Ni\~no berulang kali menekan pertanian dan memicu kebakaran
 
 Pembelajaran mesin makin sering dipakai untuk peramalan iklim, termasuk ENSO sendiri \cite{ham2019deep}, dan model berbasis pohon seperti XGBoost \cite{chen2016xgboost} populer karena akurat pada data tabular. Namun akurasi tinggi pada data deret waktu mudah menyesatkan. Kebocoran target, yaitu fitur yang membawa informasi tentang target yang tidak tersedia saat prediksi dibuat, termasuk kesalahan yang paling sering menggelembungkan skor model \cite{kaufman2012leakage}, dan validasi silang yang mengacak urutan waktu menambah masalah yang sama \cite{bergmeir2012cv}. Pada indeks komposit seperti SDCI yang dibangun dari NDVI, suhu permukaan daratan, dan curah hujan \cite{rhee2010sdci,kogan1995vci}, memakai komponen itu sebagai prediktor sama dengan memasukkan jawaban ke dalam soal.
 
-Penelitian ini bermula dari sistem peringatan dini berbasis XGBoost dan rekayasa fitur kinematika iklim (momentum dan akselerasi ONI) yang pada versi awalnya melaporkan $R^2$ uji 0,83. Saat mengaudit saluran fiturnya, kami menemukan bahwa angka itu berasal dari komponen penyusun SDCI. Artikel ini melaporkan temuan tersebut dan menjawab ulang pertanyaan aslinya dengan rancangan yang bebas kebocoran. Tiga kontribusi disampaikan. Pertama, kami mendemonstrasikan kebocoran target secara kuantitatif dan menunjukkan bahwa $R^2$ turun dari 0,80 ke 0,04 setelah diperbaiki. Kedua, kami mengukur struktur lead--lag antara ONI dan SDCI nasional dan regional dengan inferensi yang kokoh terhadap autokorelasi (galat Newey--West \cite{newey1987hac}) dan uji Granger \cite{granger1969causality}. Ketiga, kami membandingkan XGBoost hasil optimasi Bayesian dengan pembanding sederhana, yaitu klimatologi bulanan dan model deret waktu klasik, pada evaluasi out-of-sample, dan melaporkan secara jujur bahwa model ENSO tidak mengalahkan klimatologi pada lead tiga bulan.
+Penelitian ini bermula dari sistem peringatan dini berbasis XGBoost dan rekayasa fitur kinematika iklim (momentum dan akselerasi ONI) yang pada versi awalnya melaporkan $R^2$ uji 0,83. Saat mengaudit saluran fiturnya, kami menemukan bahwa angka itu berasal dari komponen penyusun SDCI. Artikel ini melaporkan temuan tersebut dan menjawab ulang pertanyaan aslinya dengan rancangan yang bebas kebocoran. Artikel ini memberi tiga kontribusi. Pertama, kami mendemonstrasikan kebocoran target secara kuantitatif dan menunjukkan bahwa $R^2$ turun dari 0,80 ke 0,07 setelah diperbaiki. Kedua, kami mengukur struktur lead--lag antara ONI dan SDCI nasional dan regional dengan inferensi yang kokoh terhadap autokorelasi (galat Newey--West \cite{newey1987hac}) dan uji Granger \cite{granger1969causality}. Ketiga, kami membandingkan XGBoost hasil penyetelan dengan pembanding sederhana, yaitu klimatologi bulanan dan model deret waktu klasik, pada evaluasi out-of-sample, dan mendapati bahwa model ENSO tidak mengalahkan klimatologi pada lead tiga bulan.
 
 Bagian~\ref{Sec:Related} meninjau penelitian terkait. Bagian~\ref{Sec:Method} menjelaskan data, rekayasa fitur, desain bebas kebocoran, dan pemodelan. Bagian~\ref{Sec:Results} melaporkan hasil, Bagian~\ref{Sec:Discussion} membahasnya beserta keterbatasannya, dan Bagian~\ref{Sec:Conclusion} menutup artikel.
 
@@ -135,15 +135,15 @@ Bagian~\ref{Sec:Related} meninjau penelitian terkait. Bagian~\ref{Sec:Method} me
 
 \paragraph{ENSO dan hujan Indonesia.} Hendon \cite{hendon2003indonesian} menunjukkan bahwa ENSO memodulasi curah hujan Indonesia, dengan dampak yang menonjol pada musim kering, dan interaksi udara--laut lokal memperkuat sinyalnya. Aldrian dan Susanto \cite{aldrian2003rainfall} membagi Indonesia menjadi tiga wilayah hujan dominan dengan hubungan berbeda terhadap suhu muka laut, dan Hamada dkk.\ \cite{hamada2002rainy} mengaitkan variasi awal dan akhir musim hujan dengan ENSO. Temuan heterogenitas wilayah dalam artikel ini searah dengan gambaran tersebut, meskipun kami memakai indeks kekeringan yang dibangun dari penginderaan jauh, bukan curah hujan tunggal.
 
-\paragraph{Indeks kekeringan berbasis satelit.} Indeks seperti Vegetation Condition Index \cite{kogan1995vci} dan indeks gabungan yang memadukan vegetasi, suhu, dan curah hujan \cite{rhee2010sdci} banyak dipakai untuk memantau kekeringan pertanian. Sifat gabungan inilah yang membuat komponen-komponennya tidak boleh dipakai sebagai prediktor indeks yang sama.
+\paragraph{Indeks kekeringan berbasis satelit.} Indeks seperti Vegetation Condition Index \cite{kogan1995vci} dan indeks gabungan yang memadukan vegetasi, suhu, dan curah hujan \cite{rhee2010sdci} banyak dipakai untuk memantau kekeringan pertanian. Karena indeksnya gabungan, komponen-komponennya tidak dapat dipakai sebagai prediktor indeks yang sama.
 
-\paragraph{Pembelajaran mesin dan validasi deret waktu.} XGBoost \cite{chen2016xgboost}, LightGBM \cite{ke2017lightgbm}, dan Random Forest \cite{breiman2001rf} sering dibandingkan dengan model deret waktu klasik dan Prophet \cite{taylor2018prophet}. Untuk deret waktu, Bergmeir dan Ben\'itez \cite{bergmeir2012cv} membahas kapan validasi silang sah dipakai, sedangkan Hyndman dan Athanasopoulos \cite{hyndman2021fpp3} menekankan pembanding sederhana dan evaluasi out-of-sample. Skor keahlian terhadap klimatologi mengikuti Murphy \cite{murphy1988skill}. Penyetelan hiperparameter memakai Optuna \cite{akiba2019optuna}, dan penjelasan model memakai nilai SHAP \cite{lundberg2017shap}. Kami melengkapi literatur itu dengan studi kasus yang menunjukkan besarnya kebocoran pada indeks komposit dan dampaknya pada kesimpulan.
+\paragraph{Pembelajaran mesin dan validasi deret waktu.} XGBoost \cite{chen2016xgboost}, LightGBM \cite{ke2017lightgbm}, dan Random Forest \cite{breiman2001rf} sering dibandingkan dengan model deret waktu klasik dan Prophet \cite{taylor2018prophet}. Untuk deret waktu, Bergmeir dan Ben\'itez \cite{bergmeir2012cv} membahas kapan validasi silang sah dipakai, sedangkan Hyndman dan Athanasopoulos \cite{hyndman2021fpp3} menekankan pembanding sederhana dan evaluasi out-of-sample. Skor keahlian terhadap klimatologi mengikuti Murphy \cite{murphy1988skill}. Penyetelan hiperparameter memakai random search pada ruang pencarian Optuna \cite{akiba2019optuna}, dan penjelasan model memakai nilai SHAP \cite{lundberg2017shap}. Kami melengkapi literatur itu dengan studi kasus yang menunjukkan besarnya kebocoran pada indeks komposit dan dampaknya pada kesimpulan.
 
 %==================================
 \section{Metodologi}
 \label{Sec:Method}
 
-Gambar~\ref{Fig:Pipeline} meringkas alur penelitian. Analisis statistik dijalankan dalam R (korelasi silang, regresi lead, uji Granger), dan pemodelan pembelajaran mesin dalam Python (XGBoost, pembanding, dan skenario 2026). Seluruh langkah dijalankan dengan seed tetap.
+Gambar~\ref{Fig:Pipeline} meringkas alur penelitian. Analisis statistik dijalankan dalam R (korelasi silang, regresi lead, uji Granger), demikian pula pemodelan pembelajaran mesin (XGBoost, pembanding, dan skenario 2026). Seluruh langkah dijalankan dengan seed tetap.
 
 \begin{figure}[ht]
 \centering
@@ -156,12 +156,12 @@ Gambar~\ref{Fig:Pipeline} meringkas alur penelitian. Analisis statistik dijalank
 \node[stat] (a) {Data bulanan\\CHIRPS, MODIS,\\OISST, ONI};
 \node[stat, right=of a] (b) {Analisis lead--lag\\korelasi silang,\\Newey--West, Granger};
 \node[ml, right=of b] (c) {Fitur ENSO\\lag 3 bulan\\+ musiman};
-\node[ml, right=of c] (d) {XGBoost (Optuna)\\vs pembanding\\dan klimatologi};
+\node[ml, right=of c] (d) {XGBoost (disetel)\\vs pembanding\\dan klimatologi};
 \draw[arr] (a)--(b); \draw[arr] (b)--(c); \draw[arr] (c)--(d);
 \node[font=\scriptsize] at ($(a.south)!0.5!(b.south)+(0,-4mm)$) {R: inferensi statistik};
-\node[font=\scriptsize] at ($(c.south)!0.5!(d.south)+(0,-4mm)$) {Python: peramalan bebas kebocoran};
+\node[font=\scriptsize] at ($(c.south)!0.5!(d.south)+(0,-4mm)$) {R: peramalan bebas kebocoran};
 \end{tikzpicture}
-\caption{Alur penelitian. Kotak terang adalah analisis statistik (R); kotak gelap adalah pemodelan pembelajaran mesin (Python).}
+\caption{Alur penelitian. Kotak terang adalah analisis statistik (R); kotak gelap adalah pemodelan pembelajaran mesin (juga R).}
 \label{Fig:Pipeline}
 \end{figure}
 
@@ -224,14 +224,26 @@ Versi awal studi memakai 72 fitur: fitur ENSO di atas ditambah semua variabel da
 \subsection{Pemodelan}
 \label{SubSec:Models}
 
-XGBoost \cite{chen2016xgboost} dengan objektif kuadrat terkecil disetel oleh optimasi Bayesian Optuna \cite{akiba2019optuna}: 50 percobaan, sampler TPE dengan seed 42, dan MedianPruner. Fungsi objektifnya adalah rata-rata RMSE pada validasi walk-forward lima lipatan (\texttt{TimeSeriesSplit}) di dalam data latih. Ruang pencarian memuat jumlah pohon (100--500), kedalaman (3--9), laju belajar ($0{,}005$--$0{,}1$, skala log), \textit{subsample} dan \textit{colsample} (0,5--0,9), bobot anak minimum (1--10), regularisasi L1 dan L2 ($10^{-3}$--10), dan $\gamma$ ($10^{-3}$--1). Pembanding adalah ARIMA(1,1,1), Prophet \cite{taylor2018prophet}, Random Forest \cite{breiman2001rf}, LightGBM \cite{ke2017lightgbm}, XGBoost dengan parameter bawaan, dan klimatologi bulanan.
+XGBoost \cite{chen2016xgboost} dengan objektif kuadrat terkecil disetel dengan random search (50 percobaan, seed 42) pada ruang pencarian yang dipakai dengan Optuna \cite{akiba2019optuna}, tanpa pruning. Fungsi objektifnya adalah rata-rata RMSE pada validasi walk-forward lima lipatan (\texttt{TimeSeriesSplit}) di dalam data latih. Ruang pencarian memuat jumlah pohon (100--500), kedalaman (3--9), laju belajar ($0{,}005$--$0{,}1$, skala log), \textit{subsample} dan \textit{colsample} (0,5--0,9), bobot anak minimum (1--10), regularisasi L1 dan L2 ($10^{-3}$--10), dan $\gamma$ ($10^{-3}$--1). Pembanding adalah ARIMA(1,1,1), Prophet \cite{taylor2018prophet}, Random Forest \cite{breiman2001rf}, LightGBM \cite{ke2017lightgbm}, XGBoost dengan parameter bawaan, dan klimatologi bulanan.
 
 Untuk skenario 2026, tiga model XGBoost kuantil (objektif \textit{pinball loss} \cite{koenker1978quantile} pada kuantil 0,1; 0,5; dan 0,9) dilatih pada fitur turunan ONI dan musiman. Skenario mengasumsikan ONI naik linear 0,15 per bulan selama dua belas bulan dari nilai terakhir (Desember 2025: $-0{,}60$). Jalur ini asumsi, bukan prakiraan ONI.
+
+\subsection{Validasi walk-forward}
+\label{SubSec:WFV}
+
+Karena data berupa deret waktu, validasi silang K-fold acak akan mencampur bulan masa depan dan masa lalu sehingga membocorkan informasi. Pemilihan model karenanya memakai validasi walk-forward (\texttt{TimeSeriesSplit} lima lipatan) di dalam 237 bulan data latih (Gambar~\ref{Fig:WFV}). Jendela latih membesar dari 42 sampai 198 bulan mulai April 2001, dan tiap lipatan divalidasi pada 39 bulan berikutnya. Bulan uji (2021--2025) tidak termasuk lipatan mana pun. Rata-rata RMSE validasi pada lima lipatan menjadi objektif penyetelan, dan skor per lipatan menunjukkan kestabilan model lintas waktu.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.85\textwidth]{figs/fig_wfv.pdf}
+\caption{Validasi walk-forward di dalam data latih (April 2001--Desember 2020); bulan uji tidak pernah disentuh.}
+\label{Fig:WFV}
+\end{figure}
 
 \subsection{Metrik dan reprodusibilitas}
 \label{SubSec:Metrics}
 
-Kami melaporkan RMSE, MAE, dan koefisien determinasi uji $R^2 = 1 - \sum (y_t - \hat y_t)^2 / \sum (y_t - \bar y)^2$. Untuk evaluasi out-of-sample dengan jendela meluas, kami memakai skor keahlian $1 - \mathrm{MSE}_{\mathrm{ONI}} / \mathrm{MSE}_{\mathrm{klim}}$ terhadap klimatologi \cite{murphy1988skill}, yang bernilai positif bila model ENSO lebih baik daripada klimatologi. Seluruh kode dijalankan dengan seed 42 (sampler Optuna, \texttt{numpy}, dan \texttt{random}); dua run berurutan pada platform Kaggle menghasilkan berkas hasil yang identik.
+Kami melaporkan RMSE, MAE, dan koefisien determinasi uji $R^2 = 1 - \sum (y_t - \hat y_t)^2 / \sum (y_t - \bar y)^2$. Untuk evaluasi out-of-sample dengan jendela meluas, kami memakai skor keahlian $1 - \mathrm{MSE}_{\mathrm{ONI}} / \mathrm{MSE}_{\mathrm{klim}}$ terhadap klimatologi \cite{murphy1988skill}, yang bernilai positif bila model ENSO lebih baik daripada klimatologi. Seluruh kode dijalankan dengan seed 42 (\texttt{set.seed}); dua render berurutan dokumen R Markdown menghasilkan hasil yang identik.
 
 %==================================
 \section{Hasil Empiris}
@@ -322,7 +334,7 @@ Papua         & $-0{,}0111$ & 0,2058 & 0,019 \\
 \subsection{Demonstrasi kebocoran target}
 \label{SubSec:Leak}
 
-Gambar~\ref{Fig:Leak} dan Tabel~\ref{Tab:Leak} merangkum eksperimen inti. Regresi linier SDCI nasional pada NDVI, LST, dan curah hujan nasional bulan yang sama menghasilkan $R^2$ uji sebesar 1,000 (pembagian kronologis 80/20 pada 312 bulan), yang berarti SDCI adalah fungsi hampir deterministik dari ketiganya. Bila ONI dan \textit{sst\_anomaly} bulan yang sama dipakai tanpa komponen itu, $R^2$ uji adalah $-0{,}373$. Rancangan awal dengan 72 fitur memperoleh $R^2$ uji 0,80 pada XGBoost hasil penyetelan, dan laporan versi awal bahkan mencatat 0,83; kedua angka itu semata-mata mencerminkan fitur penyusun SDCI.
+Gambar~\ref{Fig:Leak} dan Tabel~\ref{Tab:Leak} merangkum eksperimen inti. Regresi linier SDCI nasional pada NDVI, LST, dan curah hujan nasional bulan yang sama menghasilkan $R^2$ uji sebesar 1,000 (pembagian kronologis 80/20 pada 312 bulan), yang berarti SDCI adalah fungsi hampir deterministik dari ketiganya. Bila ONI dan \textit{sst\_anomaly} bulan yang sama dipakai tanpa komponen itu, $R^2$ uji adalah $-0{,}373$. Rancangan awal dengan 72 fitur memperoleh $R^2$ uji 0,80 pada XGBoost hasil penyetelan, dan laporan versi awal bahkan mencatat 0,83; kedua angka itu hanya mencerminkan fitur penyusun SDCI.
 
 \begin{figure}[ht]
 \centering
@@ -373,24 +385,24 @@ Lead (bulan) & $n$ uji & RMSE ONI+musiman & RMSE klimatologi & Skor keahlian \\
 \subsection{XGBoost dan pembanding pada fitur bebas kebocoran}
 \label{SubSec:ML}
 
-Tabel~\ref{Tab:Bench} dan Gambar~\ref{Fig:Bench} membandingkan semua model pada 44 fitur bebas kebocoran dan lead tiga bulan (uji 60 bulan). XGBoost hasil optimasi Bayesian mencapai RMSE terbaik (0,0951) dan $R^2$ uji 0,037, satu-satunya yang positif. Itu jauh dari 0,80 pada rancangan awal. LightGBM ($-0{,}004$), Random Forest ($-0{,}023$), dan klimatologi ($-0{,}051$) berada di sekitar nol, XGBoost bawaan $-0{,}170$, Prophet $-0{,}430$, dan ARIMA $-1{,}099$. Selisih XGBoost hasil penyetelan terhadap klimatologi (RMSE 0,0951 dibanding 0,0993) kecil dan kami tidak menguji signifikansinya; dengan 60 bulan uji yang berautokorelasi, selisih ini belum cukup untuk menyimpulkan keunggulan. RMSE validasi walk-forward terbaik adalah 0,0686 (percobaan ke-47, 209 iterasi), dibanding 0,0701 untuk klimatologi pada lipatan yang sama; XGBoost lebih baik pada tiga dari lima lipatan dan lebih buruk pada dua. $R^2$ per lipatan XGBoost berkisar 0,43--0,81 tetapi sebagian besar mencerminkan musiman, karena klimatologi saja mencapai 0,12--0,81 pada lipatan yang sama. Nilai $R^2$ negatif sebagian dipicu pergeseran level: rata-rata SDCI pada periode uji 0,673 lebih tinggi daripada data latih (0,610), dan periode uji memuat El Ni\~no 2023 (ONI puncak 1,95) dengan SDCI terendah 0,447.
+Tabel~\ref{Tab:Bench} dan Gambar~\ref{Fig:Bench} membandingkan semua model pada 44 fitur bebas kebocoran dan lead tiga bulan (uji 60 bulan). XGBoost hasil penyetelan mencapai RMSE terbaik (0,0935) dan $R^2$ uji 0,070, satu-satunya yang positif. Itu jauh dari 0,80 pada rancangan awal. LightGBM ($-0{,}004$), Random Forest ($-0{,}025$), dan klimatologi ($-0{,}051$) berada di sekitar nol, XGBoost bawaan $-0{,}214$, Prophet $-0{,}417$, dan ARIMA $-1{,}099$. Selisih XGBoost hasil penyetelan terhadap klimatologi (RMSE 0,0935 dibanding 0,0993) kecil dan kami tidak menguji signifikansinya; dengan 60 bulan uji yang berautokorelasi, selisih ini belum cukup untuk menyimpulkan keunggulan. RMSE validasi walk-forward terbaik adalah 0,0698 (percobaan ke-22, 354 iterasi), dibanding 0,0701 untuk klimatologi pada lipatan yang sama; XGBoost lebih baik pada tiga dari lima lipatan dan lebih buruk pada dua. $R^2$ per lipatan XGBoost berkisar 0,43--0,81 tetapi sebagian besar mencerminkan musiman, karena klimatologi saja mencapai 0,12--0,81 pada lipatan yang sama. Nilai $R^2$ negatif sebagian dipicu pergeseran level: rata-rata SDCI pada periode uji 0,673 lebih tinggi daripada data latih (0,610), dan periode uji memuat El Ni\~no 2023 (ONI puncak 1,95) dengan SDCI terendah 0,447.
 
 \begin{table}[ht]
 \centering
-\caption{Kinerja uji (2021--2025, 60 bulan) pada fitur ENSO lag 3 bulan + musiman. XGBoost (Optuna) dan pembanding memakai pembagian dan fitur yang sama. MAE XGBoost hasil penyetelan tidak direkam.}
+\caption{Kinerja uji (2021--2025, 60 bulan) pada fitur ENSO lag 3 bulan + musiman. XGBoost (disetel) dan pembanding memakai pembagian dan fitur yang sama.}
 \label{Tab:Bench}
 \small
 \begin{tabular}{lrrr}
 \toprule
 Model & RMSE & MAE & $R^2$ \\
 \midrule
-XGBoost (Optuna)    & \textbf{0,0951} & --     & \textbf{0,0374} \\
+XGBoost (disetel)     & \textbf{0,0935} & 0,0708 & \textbf{0,0698} \\
 LightGBM            & 0,0971 & 0,0716 & $-0{,}0036$ \\
-Random Forest       & 0,0980 & 0,0764 & $-0{,}0228$ \\
+Random Forest       & 0,0981 & 0,0768 & $-0{,}0253$ \\
 Klimatologi bulanan & 0,0993 & 0,0746 & $-0{,}0505$ \\
-XGBoost (bawaan)    & 0,1048 & 0,0783 & $-0{,}1697$ \\
-Prophet             & 0,1159 & 0,0914 & $-0{,}4297$ \\
-ARIMA(1,1,1)        & 0,1404 & 0,1189 & $-1{,}0989$ \\
+XGBoost (bawaan)    & 0,1067 & 0,0789 & $-0{,}2137$ \\
+Prophet             & 0,1153 & 0,0908 & $-0{,}4171$ \\
+ARIMA(1,1,1)        & 0,1404 & 0,1189 & $-1{,}0990$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -402,21 +414,48 @@ ARIMA(1,1,1)        & 0,1404 & 0,1189 & $-1{,}0989$ \\
 \label{Fig:Bench}
 \end{figure}
 
+\subsection{Hasil validasi walk-forward}
+\label{SubSec:WFVres}
+
+Tabel~\ref{Tab:WFV} memuat skor XGBoost hasil penyetelan pada tiap lipatan di samping klimatologi bulanan yang dihitung pada jendela latih yang sama. XGBoost memiliki RMSE lebih rendah pada lipatan 2, 3, dan 5 dan lebih tinggi pada lipatan 1 dan 4, dan rata-rata RMSE hampir sama (0,0698 dibanding 0,0701). $R^2$ lipatan XGBoost berkisar 0,43 sampai 0,81, tetapi klimatologi saja mencapai 0,12 sampai 0,81, sehingga nilai itu sebagian besar mencerminkan musiman, bukan keahlian ENSO.
+
+\begin{table}[ht]
+\centering
+\caption{Validasi walk-forward (lima lipatan di dalam data latih). Bulan dihitung pada jendela latih dan jendela validasi tiap lipatan. XGBoost memakai hiperparameter hasil penyetelan; klimatologi adalah rata-rata SDCI per bulan kalender pada jendela latih.}
+\label{Tab:WFV}
+\small
+\begin{tabular}{rrrrrrrr}
+\toprule
+ & Latih & Valid. & \multicolumn{3}{c}{XGBoost (disetel)} & \multicolumn{2}{c}{Klimatologi} \\
+\cmidrule(lr){4-6}\cmidrule(lr){7-8}
+Lipatan & bulan & bulan & RMSE & MAE & $R^2$ & RMSE & $R^2$ \\
+\midrule
+1 & 42 & 39 & 0,0839 & 0,0541 & 0,598 & 0,0718 & 0,706 \\
+2 & 81 & 39 & 0,0602 & 0,0425 & 0,476 & 0,0778 & 0,124 \\
+3 & 120 & 39 & 0,0382 & 0,0323 & 0,812 & 0,0389 & 0,805 \\
+4 & 159 & 39 & 0,1148 & 0,0680 & 0,429 & 0,0994 & 0,572 \\
+5 & 198 & 39 & 0,0520 & 0,0384 & 0,721 & 0,0628 & 0,592 \\
+\midrule
+\multicolumn{3}{l}{Mean RMSE} & \textbf{0,0698} & & & \textbf{0,0701} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Reprodusibilitas}
 \label{SubSec:Repro}
 
-Pada rancangan awal tanpa seed, lima run berurutan menghasilkan percobaan terbaik yang berbeda (nomor 31 sampai 49) dan $R^2$ uji antara 0,776 dan 0,821, karena sampler Optuna bersifat acak; lima run dengan seed 42 identik seluruhnya. Pada rancangan bebas kebocoran, dua run dengan seed 42 menghasilkan berkas hasil yang identik byte demi byte. Angka yang dilaporkan di sini karenanya dapat direproduksi, tetapi angka versi awal (0,8044 pada keluaran notebook dan 0,8257 pada laporan) tidak, karena berasal dari run tanpa seed.
+Pada rancangan awal tanpa seed, lima run berurutan menghasilkan percobaan terbaik yang berbeda (nomor 31 sampai 49) dan $R^2$ uji antara 0,776 dan 0,821, karena sampler Optuna bersifat acak. Pada analisis R yang bebas kebocoran dengan seed 42, dua render berurutan menghasilkan tabel pembanding dan proyeksi 2026 yang identik. Angka yang dilaporkan di sini karenanya dapat direproduksi, tetapi angka versi awal (0,8044 pada keluaran notebook dan 0,8257 pada laporan) tidak, karena berasal dari run tanpa seed. Notebook Python yang menyetel dengan Optuna memberi gambaran serupa (XGBoost hasil penyetelan $R^2$ uji 0,037, klimatologi $-0{,}051$); kedua prosedur penyetelan menemukan hiperparameter berbeda sehingga nilai hasil penyetelan sedikit berbeda, dan pada keduanya model hasil penyetelan tetap dekat dengan nol.
 
 \subsection{Skenario Godzilla El Ni\~no 2026}
 \label{SubSec:Scenario}
 
-Dengan jalur ONI yang diasumsikan naik 0,15 per bulan, ONI mencapai sekitar $+1{,}2$ pada Desember 2026, yaitu El Ni\~no sedang, belum sekuat 2015. Model kuantil memproyeksikan SDCI nasional terendah pada September 2026 sebesar 0,529 dengan rentang 10--90\% sebesar 0,410--0,676. Nilai ini masih di dalam rentang historis normal, jauh di atas ambang kritis 0,3, dan sedikit di atas rata-rata historis September (0,493). Hasil ini konsisten dengan temuan Bagian~\ref{SubSec:ML}: model berbasis ONI lag tiga bulan hampir tidak bergeser dari pola musiman, sehingga proyeksi itu tidak dapat dibaca sebagai sinyal kekeringan ekstrem.
+Dengan jalur ONI yang diasumsikan naik 0,15 per bulan, ONI mencapai sekitar $+1{,}2$ pada Desember 2026, yaitu El Ni\~no sedang, belum sekuat 2015. Model kuantil memproyeksikan SDCI nasional terendah pada September 2026 sebesar 0,399 dengan rentang 10--90\% sebesar 0,360--0,538. Nilai ini di atas ambang kritis 0,3 tetapi di bawah rata-rata historis September (0,493); hanya 3 dari 26 bulan September teramati (2002, 2015, dan 2019) yang lebih rendah. Karena model tidak jelas mengalahkan klimatologi pada bulan uji (Bagian~\ref{SubSec:ML}), proyeksi itu merupakan indikasi bersyarat skenario untuk September yang lebih kering dari biasanya, bukan prakiraan tervalidasi kekeringan ekstrem.
 
 %==================================
 \section{Diskusi}
 \label{Sec:Discussion}
 
-\paragraph{Kebocoran target adalah temuan utama.} Perbedaan antara $R^2$ 0,80 dan 0,04 sepenuhnya berasal dari satu keputusan desain: menyertakan variabel yang membentuk target. Ini sejalan dengan peringatan Kaufman dkk.\ \cite{kaufman2012leakage} bahwa kebocoran sulit dikenali justru karena skor modelnya tampak bagus. Pemeriksaan yang cukup murah adalah meregresikan target pada kandidat prediktor secara linier: $R^2$ mendekati 1 sudah menjadi tanda bahaya. Pada indeks komposit, aturan praktisnya adalah memperlakukan komponen indeks sebagai bagian dari target.
+\paragraph{Kebocoran target adalah temuan utama.} Perbedaan antara $R^2$ 0,80 dan 0,04 sepenuhnya berasal dari satu keputusan desain: menyertakan variabel yang membentuk target. Ini sejalan dengan peringatan Kaufman dkk.\ \cite{kaufman2012leakage} bahwa kebocoran sulit dikenali justru karena skor modelnya tampak bagus. Pemeriksaan cepat adalah meregresikan target pada kandidat prediktor secara linier: $R^2$ mendekati 1 menandakan kebocoran. Pada indeks komposit, aturan praktisnya adalah memperlakukan komponen indeks sebagai bagian dari target.
 
 \paragraph{ENSO memberi sinyal serempak, bukan peringatan dini tiga bulan.} Korelasi dan koefisien ONI terkuat pada lead nol dan menghilang pada lead tiga bulan atau lebih. Ini searah dengan gambaran bahwa ENSO memodulasi curah hujan Indonesia secara cepat melalui sirkulasi atmosfer dan interaksi udara--laut lokal \cite{hendon2003indonesian,aldrian2003rainfall}, bukan melalui penundaan beberapa bulan. Namun besar efeknya kecil terhadap variasi anomali SDCI (maksimum $R^2$ 0,085), karena sebagian besar variasi SDCI berasal dari musiman (58,9\%) dan faktor lain yang tidak dimodelkan. Akibatnya, sistem peringatan dini yang hanya mengandalkan ONI tiga bulan sebelumnya tidak memberi keunggulan atas klimatologi.
 
@@ -426,13 +465,13 @@ Dengan jalur ONI yang diasumsikan naik 0,15 per bulan, ONI mencapai sekitar $+1{
 
 \paragraph{Implikasi untuk peringatan dini.} Hasil ini mendukung penggunaan ENSO sebagai pemantau serempak dan konteks, dan tidak mendukung klaim bahwa model yang dilatih pada ONI lag tiga bulan dapat memperingatkan kekeringan nasional. Peningkatan kemungkinan datang dari prediktor tambahan (misalnya Indian Ocean Dipole, kelembapan tanah, dan persistensi SDCI sendiri) dan dari target regional.
 
-\paragraph{Keterbatasan.} (1) Target adalah satu indeks nasional yang dirata-ratakan dari delapan wilayah. (2) Data hanya 312 bulan dan uji hanya 60 bulan, sehingga selisih kecil antarmodel tidak dapat dibedakan dari derau, dan nilai $p$ Newey--West bersifat asimtotik. (3) Persistensi SDCI (SDCI yang di-lag) tidak diuji sebagai prediktor, padahal pembanding ini kemungkinan kuat. (4) Pembanding ARIMA dan Prophet tidak disetel. (5) Rata-rata SDCI pada periode uji bergeser dari data latih (0,673 dibanding 0,610), yang menekan $R^2$ semua model. (6) Skenario 2026 bergantung pada jalur ONI asumsi yang hanya mencapai $+1{,}2$, jadi bukan simulasi El Ni\~no ekstrem. (7) Rumusan SDCI mengikuti definisi proyek; kami tidak membandingkannya dengan pembobotan lain. (8) MAE XGBoost hasil penyetelan tidak tercatat.
+\paragraph{Keterbatasan.} (1) Target adalah satu indeks nasional yang dirata-ratakan dari delapan wilayah. (2) Data hanya 312 bulan dan uji hanya 60 bulan, sehingga selisih kecil antarmodel tidak dapat dibedakan dari derau, dan nilai $p$ Newey--West bersifat asimtotik. (3) Persistensi SDCI (SDCI yang di-lag) tidak diuji sebagai prediktor, padahal pembanding ini kemungkinan kuat. (4) Pembanding ARIMA dan Prophet tidak disetel. (5) Rata-rata SDCI pada periode uji bergeser dari data latih (0,673 dibanding 0,610), yang menekan $R^2$ semua model. (6) Skenario 2026 bergantung pada jalur ONI asumsi yang hanya mencapai $+1{,}2$, jadi bukan simulasi El Ni\~no ekstrem. (7) Rumusan SDCI mengikuti definisi proyek; kami tidak membandingkannya dengan pembobotan lain. (8) Penyetelan memakai random search, bukan optimasi Bayesian, sehingga hiperparameter dan sedikit nilai skor hasil penyetelan berbeda dari notebook Python yang memakai Optuna.
 
 %==================================
 \section{Kesimpulan}
 \label{Sec:Conclusion}
 
-Kami menguji seberapa jauh ENSO memprediksi kekeringan nasional Indonesia dengan data bulanan 2000--2025. Rancangan awal yang melaporkan $R^2$ uji sekitar 0,80 ternyata bocor: NDVI, LST, dan curah hujan bulan yang sama merekonstruksi SDCI dengan $R^2$ uji 1,000. Setelah komponen itu dibuang dan fitur ENSO digeser tiga bulan, XGBoost hasil penyetelan hanya mencapai $R^2$ uji 0,037 (RMSE 0,0951), dan klimatologi bulanan $-0{,}051$ (RMSE 0,0993). Skor keahlian ONI terhadap klimatologi negatif pada lead 1, 3, 6, dan 9 bulan. ONI berkorelasi negatif dengan SDCI pada bulan yang sama dan satu bulan sesudahnya, paling kuat di Jawa dan Nusa Tenggara, tetapi hubungan itu hilang pada lead tiga bulan atau lebih dan hanya menjelaskan kurang dari sepersepuluh variasi anomali. Pada skenario ONI naik linear, SDCI nasional September 2026 diproyeksikan 0,529 (rentang 10--90\% 0,41--0,68), tidak lebih kering daripada rata-rata historis. Dalam praktik, ENSO layak dipakai sebagai pemantau serempak kekeringan di Jawa dan Nusa Tenggara, tetapi bukan sebagai prediktor tunggal tiga bulan ke depan. Pemeriksaan kebocoran target, pembanding klimatologi, dan seed tetap sebaiknya menjadi praktik baku dalam studi peringatan dini serupa.
+Kami menguji seberapa jauh ENSO memprediksi kekeringan nasional Indonesia dengan data bulanan 2000--2025. Rancangan awal yang melaporkan $R^2$ uji sekitar 0,80 ternyata bocor: NDVI, LST, dan curah hujan bulan yang sama merekonstruksi SDCI dengan $R^2$ uji 1,000. Setelah komponen itu dibuang dan fitur ENSO digeser tiga bulan, XGBoost hasil penyetelan hanya mencapai $R^2$ uji 0,070 (RMSE 0,0935), dan klimatologi bulanan $-0{,}051$ (RMSE 0,0993). Skor keahlian ONI terhadap klimatologi negatif pada lead 1, 3, 6, dan 9 bulan. ONI berkorelasi negatif dengan SDCI pada bulan yang sama dan satu bulan sesudahnya, paling kuat di Jawa dan Nusa Tenggara, tetapi hubungan itu hilang pada lead tiga bulan atau lebih dan hanya menjelaskan kurang dari sepersepuluh variasi anomali. Pada skenario ONI naik linear, SDCI nasional September 2026 diproyeksikan 0,399 (rentang 10--90\% 0,36--0,54), di bawah rata-rata historis September 0,493 tetapi di atas ambang kritis 0,3, tanpa bukti bahwa model mengalahkan klimatologi. Dalam praktik, ENSO layak dipakai sebagai pemantau serempak kekeringan di Jawa dan Nusa Tenggara, tetapi bukan sebagai prediktor tunggal tiga bulan ke depan. Pemeriksaan kebocoran target, pembanding klimatologi, dan seed tetap sebaiknya menjadi praktik baku dalam studi peringatan dini serupa.
 
 %==================================
 
@@ -445,6 +484,6 @@ Kami menguji seberapa jauh ENSO memprediksi kekeringan nasional Indonesia dengan
 \label{Sec:SuppA}
 
 \sloppy
-Data bulanan (312 baris) berada di \texttt{data/master\_dataset\_godzilla\_elnino\_2000\_2025.csv}. Notebook \texttt{notebooks/godzila-el-nino.ipynb} memuat seluruh pemodelan Python dan, pada sel terakhirnya, analisis R. Analisis R yang sama tersedia sebagai dokumen R Markdown \texttt{R/analisis\_R.Rmd} (hasil render \texttt{docs/analisis\_R.html}). Skrip \texttt{artikel\_smds/buat\_figur.py} membuat ulang semua gambar dan menghitung ulang tabel lead--lag dengan implementasi Newey--West sendiri; hasilnya cocok dengan R untuk semua lead. Angka XGBoost dan pembanding (Tabel~\ref{Tab:Bench}) disalin dari keluaran kernel Kaggle ber-seed dan disimpan di \texttt{artikel\_smds/hasil\_kaggle\_seeded.json}. Seed yang dipakai adalah 42.
+Data bulanan (312 baris) berada di \texttt{data/master\_dataset\_godzilla\_elnino\_2000\_2025.csv}. Dokumen R Markdown \texttt{R/godzila-el-nino.Rmd} menjalankan seluruh alur notebook \texttt{notebooks/godzila-el-nino.ipynb} dalam R (hasil render \texttt{R/godzila-el-nino.html}) dan menulis semua angka model yang dilaporkan ke \texttt{R/hasil\_R.json}. Statistik lead--lag ada di \texttt{R/analisis\_R.Rmd}. Skrip \texttt{artikel\_smds/buat\_figur.py} membuat ulang semua gambar dari data dan \texttt{R/hasil\_R.json}, serta menghitung ulang tabel lead--lag dengan implementasi Newey--West sendiri; hasilnya cocok dengan R untuk semua lead. Seed yang dipakai adalah 42.
 
 \end{document}

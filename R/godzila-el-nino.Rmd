@@ -1,0 +1,472 @@
+---
+title: "Forecasting Godzilla El Niño 2026 terhadap Kekeringan Nasional (Versi R)"
+subtitle: "Padanan R dari notebooks/godzila-el-nino.ipynb"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 4.5, dpi = 110)
+.libPaths(c("~/R/lib", .libPaths()))  # lokasi lokal paket; abaikan jika paket sudah terpasang global
+for (p in c("xgboost", "lightgbm", "randomForest", "forecast", "zoo", "ggplot2", "tidyr"))
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p, repos = "https://cloud.r-project.org")
+suppressMessages({library(xgboost); library(lightgbm); library(randomForest); library(forecast)
+                  library(zoo); library(ggplot2); library(tidyr)})
+set.seed(42)
+```
+
+# Data Loading & Alignment
+
+## Import Library & Konfigurasi Global
+
+Tahap ini berfokus pada inisialisasi pustaka utama yang dibutuhkan untuk manipulasi data (base R, zoo) serta mendaftarkan jalur penyimpanan (path) dari dataset yang akan diolah. Berbeda dengan notebook Python yang membaca empat CSV mentah dari Kaggle, versi R membaca satu `master_dataset` hasil perakitan notebook (SDCI, iklim daratan, zonal Pasifik, dan ONI sudah digabung dan diinterpolasi).
+
+```{r paths}
+FILE_MASTER <- "../data/master_dataset_godzilla_elnino_2000_2025.csv"
+```
+
+## Memuat Dataset Historis
+
+Memuat master dataset dan memastikan kolom waktu berformat tanggal murni (dikunci ke hari pertama tiap bulan), tanpa duplikasi.
+
+```{r load}
+df_master <- read.csv(FILE_MASTER)
+df_master$date_key <- as.Date(format(as.Date(df_master$date_key), "%Y-%m-01"))
+df_master <- df_master[!duplicated(df_master$date_key, fromLast = TRUE), ]
+cat("Status: Berhasil memuat master dataset.\n")
+```
+
+## Perakitan Master Timeline & Imputasi Sensitif Waktu
+
+Kerangka waktu harus kontinu tanpa bulan yang terlewat, dan nilai hilang (jika ada) diimputasi dengan time-aware interpolation. Audit di bawah memeriksa keduanya pada master dataset.
+
+```{r timeline}
+tl <- seq(min(df_master$date_key), max(df_master$date_key), by = "month")
+cat("Bulan hilang pada timeline :", length(setdiff(tl, df_master$date_key)), "\n")
+cat("Sel kosong (NA)            :", sum(is.na(df_master)), "\n")
+cat("- Total Baris (Bulan) :", nrow(df_master), "\n- Total Fitur         :", ncol(df_master), "\n")
+```
+
+# EDA
+
+## Inisialisasi Visualisasi & Analisis Runtun Waktu (Time-Series)
+
+Pada tahap ini, Time-Series Overlay memetakan pergerakan Indeks Kekeringan Nasional (SDCI) melawan Oceanic Niño Index (ONI). Area berbayang oranye (shading) menyoroti periode anomali suhu ekstrem (El Niño Kuat, ONI > 1.0) agar korelasi visualnya langsung terlihat.
+
+```{r eda_ts, fig.width=11, fig.height=4.5}
+par(mar = c(4, 4.5, 3, 4.5))
+plot(df_master$date_key, df_master$SDCI_Indo, type = "l", col = "#d62728", lwd = 2.2,
+     xlab = "Tahun Pengamatan", ylab = "Indeks Kekeringan Nasional (SDCI_Indo)", col.lab = "#d62728",
+     main = "Dampak Kenaikan Suhu Pasifik terhadap Kekeringan Skala Nasional")
+abline(h = 0.3, lty = 2, lwd = 1.5)
+par(new = TRUE)
+plot(df_master$date_key, df_master$ONI, type = "n", axes = FALSE, xlab = "", ylab = "", ylim = c(-2.5, 3))
+on <- df_master$ONI > 1.0
+rect(df_master$date_key[on], -2.5, df_master$date_key[on] + 31, 3, col = adjustcolor("orange", .25), border = NA)
+lines(df_master$date_key, df_master$ONI, col = "#1f77b4", lwd = 2)
+axis(4, col.axis = "#1f77b4"); mtext("Oceanic Niño Index (ONI)", 4, 3, col = "#1f77b4")
+legend("topright", c("SDCI Nasional", "Batas Kekeringan Ekstrem", "Suhu Pasifik (ONI)", "Fase El Nino Kuat"),
+       col = c("#d62728", "black", "#1f77b4", "orange"), lty = c(1, 2, 1, NA), pch = c(NA, NA, NA, 15), bg = "white")
+```
+
+## Analisis Jeda Waktu Dampak (Lag Cross-Correlation)
+
+Dampak kenaikan suhu Samudra Pasifik tidak harus muncul pada bulan yang sama. Visualisasi cross-correlation ini melihat korelasi ONI(t) dengan SDCI(t+lag) untuk lag 0–12 bulan. Pada data ini korelasi negatif terkuat berada di lag 0 dan melemah cepat, sehingga pengaruh ONI tidak tertunda lama.
+
+```{r eda_lag}
+lags <- 0:12; n <- nrow(df_master)
+corrs <- sapply(lags, function(l) cor(df_master$ONI[1:(n - l)], df_master$SDCI_Indo[(1 + l):n]))
+max_lag <- lags[which.min(corrs)]
+ggplot(data.frame(lag = lags, r = corrs), aes(lag, r, fill = r < 0)) + geom_col(color = "black", alpha = .7) +
+  scale_fill_manual(values = c("TRUE" = "red", "FALSE" = "blue"), guide = "none") +
+  geom_hline(yintercept = 0) + geom_vline(xintercept = max_lag, linetype = 2, color = "darkred") +
+  scale_x_continuous(breaks = lags) + theme_minimal() +
+  labs(title = "Korelasi Jeda Waktu: Efek ONI terhadap SDCI Nasional",
+       subtitle = paste("Dampak Puncak di Bulan ke-", max_lag),
+       x = "Jeda Waktu (Bulan setelah anomali suhu terjadi)", y = "Koefisien Korelasi Pearson")
+```
+
+## Pemetaan Sensitivitas Spasial (Heatmap)
+
+Kerentanan wilayah terhadap ENSO berbeda-beda. Heatmap korelasi antara ONI dan SDCI per pulau memperlihatkan polanya: korelasi negatif lebih kuat di Jawa dan Nusa Tenggara (wilayah monsunal) dibanding Papua, Maluku, dan Kalimantan. Ini korelasi, bukan bukti sebab-akibat.
+
+```{r eda_heat, fig.width=8, fig.height=7}
+cc <- intersect(c("ONI", "sst_anomaly", "SDCI_Indo", "SDCI_Sumatera", "SDCI_Jawa", "SDCI_Kalimantan",
+                  "SDCI_Sulawesi", "SDCI_NusaTenggara", "SDCI_Maluku", "SDCI_Papua"), names(df_master))
+cm <- cor(df_master[, cc]); cm[upper.tri(cm, diag = TRUE)] <- NA
+hm <- na.omit(as.data.frame(as.table(cm))); names(hm) <- c("x", "y", "r")
+ggplot(hm, aes(x, y, fill = r)) + geom_tile(color = "white") + geom_text(aes(label = sprintf("%.2f", r)), size = 3) +
+  scale_fill_gradient2(low = "#d6604d", mid = "white", high = "#2166ac", limits = c(-1, 1)) +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + labs(x = NULL, y = NULL,
+  title = "Pemetaan Sensitivitas Kekeringan per Pulau terhadap Anomali Pasifik")
+```
+
+## Analisis Pergeseran Distribusi Probabilitas (KDE Plot)
+
+Kernel Density Estimation (KDE) membandingkan distribusi SDCI nasional pada fase La Niña, Netral, dan El Niño. Grafik ini menunjukkan seberapa besar distribusi bergeser antar fase dan seberapa dekat dengan batas kritis (SDCI < 0.3); pergeserannya perlu dibaca bersama tumpang-tindih kurvanya.
+
+```{r eda_kde}
+df_master$Fase_Iklim <- ifelse(df_master$ONI >= 0.5, "Fase El Nino", ifelse(df_master$ONI <= -0.5, "Fase La Nina", "Fase Netral"))
+ggplot(df_master, aes(SDCI_Indo, fill = Fase_Iklim)) + geom_density(alpha = .4) +
+  scale_fill_manual(values = c("Fase El Nino" = "red", "Fase La Nina" = "blue", "Fase Netral" = "gray")) +
+  geom_vline(xintercept = 0.3, linetype = "dashed", linewidth = 1) + coord_cartesian(xlim = c(0, 1)) + theme_minimal() +
+  labs(title = "Pergeseran Peluang Kekeringan Berdasarkan Fase Iklim Pasifik",
+       x = "Skor SDCI Nasional (Kiri = Semakin Kering)", y = "Kepadatan Probabilitas (Density)", fill = NULL)
+```
+
+# Spatio-Temporal Feature Engineering
+
+## Definisi Rekayasa Fitur Kinematika Iklim (Inovasi Utama)
+
+Tahap ini merupakan inti dari inovasi pemodelan pada riset ini. Fungsi `create_advanced_temporal_features` dirancang untuk mentransformasi data iklim statis menjadi variabel dinamis. Selain menggunakan ekstraksi memori temporal klasik (Lags, Rolling Windows, dan Exponential Moving Average), fungsi ini merekayasa fitur Kinematika Fisika, yaitu menghitung Momentum (kecepatan perubahan suhu) dan Akselerasi (lonjakan percepatan pemanasan) untuk mendeteksi agresivitas El Niño secara instan.
+
+```{r fe_def}
+lagv <- function(x, k) c(rep(NA, k), head(x, length(x) - k))
+ema  <- function(x, span) { a <- 2 / (span + 1); o <- numeric(length(x)); o[1] <- x[1]
+  for (i in seq_along(x)[-1]) o[i] <- a * x[i] + (1 - a) * o[i - 1]; o }
+create_advanced_temporal_features <- function(x, col) {
+  o <- list()
+  for (k in c(1:6, 12)) o[[paste0(col, "_lag_", k)]] <- lagv(x, k)               # 1. Lags
+  for (w in c(3, 6)) {                                                            # 2. Rolling windows
+    o[[paste0(col, "_roll_mean_", w)]] <- rollapplyr(x, w, mean, fill = NA)
+    o[[paste0(col, "_roll_std_", w)]]  <- rollapplyr(x, w, sd,   fill = NA)
+    o[[paste0(col, "_roll_max_", w)]]  <- rollapplyr(x, w, max,  fill = NA)
+    o[[paste0(col, "_roll_min_", w)]]  <- rollapplyr(x, w, min,  fill = NA)
+  }
+  for (e in c(3, 6)) o[[paste0(col, "_ema_", e)]] <- ema(x, e)                    # 3. EMA
+  m1 <- x - lagv(x, 1)                                                            # 4. Kinematika
+  o[[paste0(col, "_momentum_1")]] <- m1
+  o[[paste0(col, "_momentum_3")]] <- x - lagv(x, 3)
+  o[[paste0(col, "_accel_1")]]    <- m1 - lagv(m1, 1)
+  as.data.frame(o)
+}
+```
+
+## Eksekusi Ekstraksi Fitur & Penyesuaian Dimensi Data
+
+Pada blok ini, fungsi rekayasa fitur diaplikasikan pada variabel utama pembawa sinyal anomali (ONI dan sst_anomaly). Karena ekstraksi fitur spasio-temporal (terutama Lag 12 bulan) membutuhkan data historis mundur, maka 12 baris pertama pada dataset secara otomatis akan menghasilkan nilai kosong (NaN). Baris-baris tersebut kemudian dihapus (di-drop) guna memastikan dataset benar-benar bersih dan valid sebelum disalurkan ke tahap pelatihan model.
+
+```{r fe_run}
+cols_to_use <- intersect(c("ONI", "sst_anomaly"), names(df_master))
+F_all <- do.call(cbind, lapply(cols_to_use, function(cn)          # kolom mentah ikut dipertahankan (seperti df.copy() di Python)
+  cbind(setNames(data.frame(df_master[[cn]]), cn), create_advanced_temporal_features(df_master[[cn]], cn))))
+cat("Dimensi data sebelum drop NaN :", nrow(F_all), "x", ncol(F_all), "\n")
+keep <- complete.cases(F_all)
+df_engineered <- cbind(date_key = df_master$date_key, SDCI_Indo = df_master$SDCI_Indo, F_all)[keep, ]
+cat("Dimensi data setelah drop NaN  :", nrow(df_engineered), "x", ncol(df_engineered), "\n")
+head(df_engineered[, c("date_key", "ONI_lag_12", "ONI_roll_mean_3", "ONI_ema_3", "ONI_momentum_1", "ONI_accel_1")])
+```
+
+# Time-Series Data Splitting
+
+## Audit Kebocoran Data (Leakage Audit) & Pemisahan Kronologis
+
+Tahap ini bertujuan untuk memastikan integritas pemodelan dengan melakukan Leakage Audit secara otomatis. Seluruh kolom yang berpotensi membocorkan informasi masa depan atau target prediksi (seperti ID, tanggal, dan varian SDCI lainnya) dieleminasi secara mutlak. Selanjutnya, data dipisah secara kronologis (80% awal untuk latih, 20% akhir untuk uji), sehingga model dipaksa murni memprediksi masa depan (Hidden Test Set) tanpa pernah melihatnya selama fase pelatihan.
+
+**Perbaikan kebocoran target (v2):** SDCI dibangun dari NDVI, LST, dan curah hujan, sehingga variabel-variabel itu pada bulan yang sama tidak boleh dipakai sebagai prediktor. Fitur kini hanya turunan ONI/`sst_anomaly` yang digeser **H = 3 bulan** (fitur bulan t-3 memprediksi SDCI bulan t) ditambah musiman bulan. Test set tidak lagi dipakai untuk early stopping.
+
+```{r split}
+H <- 3
+mon_e <- as.integer(format(df_engineered$date_key, "%m"))
+Xe <- as.matrix(df_engineered[, -(1:2)])
+X_all <- cbind(apply(Xe, 2, lagv, k = H),                    # hanya fitur ENSO yang digeser H bulan
+               month_sin = sin(2 * pi * mon_e / 12), month_cos = cos(2 * pi * mon_e / 12))
+ok <- complete.cases(X_all)
+X_all <- X_all[ok, ]; y_all <- df_engineered$SDCI_Indo[ok]; dates_all <- df_engineered$date_key[ok]
+cat("Target Utama      : SDCI_Indo (lead", H, "bulan)\n")
+cat("Fitur Prediktor   :", ncol(X_all), "kolom (ENSO lag-", H, " + musiman)\n", sep = "")
+cat("Deteksi Kebocoran : komponen SDCI (NDVI/LST/curah hujan) dikeluarkan\n")
+
+sp <- floor(nrow(X_all) * .8)                                # Hidden test set = 20% data terakhir
+X_train <- X_all[1:sp, ];  y_train <- y_all[1:sp];  dates_train <- dates_all[1:sp]
+X_test  <- X_all[-(1:sp), ]; y_test <- y_all[-(1:sp)]; dates_test <- dates_all[-(1:sp)]
+n_val <- floor(sp * .15)                                     # validasi early stopping = ekor data TRAIN
+fi <- 1:(sp - n_val); vi <- (sp - n_val + 1):sp
+```
+
+## Konfigurasi Walk-Forward Cross Validation
+
+Karena dataset ini time-series, pengacakan standar (K-Fold) merusak urutan temporal dan menyebabkan kebocoran data. Sebagai gantinya dipakai Walk-Forward Validation (TimeSeriesSplit) dengan jendela latih yang terus membesar. Skor antar fold dipakai untuk menilai kestabilan model dari waktu ke waktu.
+
+```{r wfv}
+time_series_split <- function(n, k = 5) {                    # setara sklearn TimeSeriesSplit(n_splits = 5)
+  ts <- n %/% (k + 1); st <- seq(n - k * ts, by = ts, length.out = k)
+  lapply(st, function(s) list(tr = 1:s, va = (s + 1):(s + ts)))
+}
+folds <- time_series_split(sp)
+cat("Konfigurasi Walk-Forward Validation:\n")
+for (i in seq_along(folds)) cat(sprintf("Fold %d: Training %d bulan -> Validasi %d bulan\n", i, length(folds[[i]]$tr), length(folds[[i]]$va)))
+cat("\nHISTORY TRAINING :", format(min(dates_train), "%Y-%m"), "s/d", format(max(dates_train), "%Y-%m"),
+    "\nFUTURE TESTING   :", format(min(dates_test), "%Y-%m"), "s/d", format(max(dates_test), "%Y-%m"), "\n")
+R2   <- function(a, p) 1 - sum((a - p)^2) / sum((a - mean(a))^2)
+RMSE <- function(a, p) sqrt(mean((a - p)^2))
+MAE  <- function(a, p) mean(abs(a - p))
+met_row <- function(n, p) data.frame(Model = n, RMSE = RMSE(y_test, p), MAE = MAE(y_test, p), R2 = R2(y_test, p))
+```
+
+# Comparatif
+
+## Benchmarking Model Pembanding
+
+Sebelum masuk ke model utama, lima model pembanding dilatih dengan fitur yang sama (ENSO lag-3 + musiman, tanpa kebocoran): ARIMA(1,1,1), Prophet, Random Forest, LightGBM, XGBoost default, dan Klimatologi (rata-rata SDCI per bulan pada data latih). Metrik dihitung pada hidden test set.
+
+```{r comparatif}
+X_ <- X_all; mon_all <- format(dates_all, "%m"); tr <- 1:sp; te <- (sp + 1):nrow(X_all)
+xgb_default <- function(Xa, ya, Xb) predict(xgb.train(list(objective = "reg:squarederror", eta = .05, seed = 42, nthread = 2),
+                 xgb.DMatrix(Xa, label = ya), nrounds = 300, verbose = 0), xgb.DMatrix(Xb))
+bench <- list(
+  "ARIMA"           = function() as.numeric(forecast(Arima(y_train, order = c(1, 1, 1)), h = length(y_test))$mean),
+  "Random Forest"   = function() predict(randomForest(X_train, y_train, ntree = 300), X_test),
+  "LightGBM"        = function() predict(lgb.train(list(objective = "regression", learning_rate = .05, seed = 42, verbose = -1, num_threads = 2),
+                                          lgb.Dataset(X_train, label = y_train), nrounds = 300, verbose = -1), X_test),
+  "XGBoost (default)" = function() xgb_default(X_train, y_train, X_test),
+  "Klimatologi"     = function() as.numeric(tapply(y_train, mon_all[tr], mean)[mon_all[te]]))
+if (requireNamespace("prophet", quietly = TRUE))
+  bench[["Prophet"]] <- function() { m <- prophet::prophet(data.frame(ds = dates_train, y = y_train), daily.seasonality = FALSE,
+      weekly.seasonality = FALSE, yearly.seasonality = TRUE); predict(m, data.frame(ds = dates_test))$yhat }
+benchmark_results <- do.call(rbind, lapply(names(bench), function(n) met_row(n, bench[[n]]())))
+benchmark_results[order(benchmark_results$R2), ]
+```
+
+# Model Training (XGBoost)
+
+## Definisi Ruang Pencarian Hiperparameter (Search Space) & Mekanisme Pruning
+
+Tahap ini merumuskan fungsi objektif untuk pencarian hiperparameter. Ruang pencarian (search space) sama dengan notebook, mencakup kedalaman pohon (max_depth), regularisasi penalti L1/L2 (alpha/lambda), hingga parameter gamma untuk mencegah overfitting. Evaluasi di dalam fungsi ini juga menggunakan Walk-Forward Validation (TimeSeriesSplit). **Catatan R:** Optuna tidak tersedia di R dan Pruning tidak diterapkan, sehingga pencarian memakai random search dengan search space dan skema CV yang sama.
+
+```{r objective}
+sample_params <- function() list(nrounds = sample(100:500, 1), max_depth = sample(3:9, 1),
+  eta = exp(runif(1, log(.005), log(.1))), subsample = runif(1, .5, .9), colsample_bytree = runif(1, .5, .9),
+  min_child_weight = sample(1:10, 1), lambda = exp(runif(1, log(1e-3), log(10))),
+  alpha = exp(runif(1, log(1e-3), log(10))), gamma = exp(runif(1, log(1e-3), log(1))))
+make_params <- function(p, ...) modifyList(c(p[setdiff(names(p), c("nrounds", "cv"))],
+  list(objective = "reg:squarederror", seed = 42, nthread = 2)), list(...))
+objective <- function(p) mean(sapply(folds, function(f) {
+  m <- xgb.train(make_params(p), xgb.DMatrix(X_train[f$tr, ], label = y_train[f$tr]), nrounds = p$nrounds, verbose = 0)
+  RMSE(y_train[f$va], predict(m, xgb.DMatrix(X_train[f$va, ])))
+}))
+```
+
+## Eksekusi Pencarian Hiperparameter (Random Search)
+
+Model memulai proses pencarian konfigurasi terbaik dengan 50 trials untuk mendapatkan konfigurasi yang presisi dan stabil. **Catatan R:** notebook Python memakai Optuna (TPE dengan Median Pruner), sedangkan R tidak memiliki Optuna dan memakai random search 50 trial, sehingga konfigurasi terbaik bisa berbeda.
+
+```{r tune}
+set.seed(42)
+trials <- lapply(1:50, function(i) { p <- sample_params(); p$cv <- objective(p); p })
+best_params <- trials[[which.min(sapply(trials, `[[`, "cv"))]]
+cat("--- RINGKASAN TUNING ---\nRMSE Validasi Terbaik :", round(best_params$cv, 5), "\n")
+round(unlist(best_params[setdiff(names(best_params), "cv")]), 5)
+```
+
+## Pelatihan Final Evaluator Model (Standard XGBoost)
+
+Parameter terbaik dipakai untuk melatih model Evaluator (objektif reg:squarederror). Early stopping (50 ronde) memakai validasi yang diambil dari ekor data latih; test set tidak dipakai untuk menghentikan pelatihan, sehingga skor test tetap bersih dari pengaruh pemilihan iterasi.
+
+```{r final_fit}
+dfit <- xgb.DMatrix(X_train[fi, ], label = y_train[fi]); dval <- xgb.DMatrix(X_train[vi, ], label = y_train[vi])
+final_xgb_model <- xgb.train(make_params(best_params, eval_metric = "rmse"), dfit, nrounds = best_params$nrounds,
+                             evals = list(train = dfit, validation = dval), early_stopping_rounds = 50, verbose = 0)
+best_iter <- xgb.attributes(final_xgb_model)$best_iteration
+cat("Training Konvergen pada Iterasi:", best_iter, "\n")
+```
+
+## Diagnostik Kinerja (Learning Curve Analysis)
+
+Kurva ini memetakan penurunan galat pada data latih dan data validasi. Garis vertikal merah menandai titik henti optimal hasil early stopping. Jarak antara kurva latih dan validasi menunjukkan seberapa besar model menyesuaikan diri berlebihan terhadap data latih.
+
+```{r learning_curve}
+lc <- as.data.frame(attributes(final_xgb_model)$evaluation_log)
+ggplot(lc, aes(iter)) + geom_line(aes(y = train_rmse, color = "Training Loss"), linewidth = 1) +
+  geom_line(aes(y = validation_rmse, color = "Generalization Loss"), linewidth = 1, linetype = 2) +
+  geom_vline(xintercept = as.numeric(best_iter) + 1, color = "red", alpha = .5) + theme_minimal() +
+  labs(title = "Model Convergence Analysis", x = "Boosting Rounds", y = "RMSE", color = NULL)
+```
+
+## Transparansi Model dengan Explainable AI (SHAP)
+
+SHAP (Shapley values) dipakai untuk menjelaskan kontribusi tiap fitur terhadap prediksi. Grafik ini memperlihatkan fitur ENSO dan musiman mana yang paling berpengaruh pada model; ini menjelaskan perilaku model, bukan mekanisme klimatologis. **Catatan R:** nilai SHAP dihitung langsung oleh XGBoost (`predcontrib = TRUE`, TreeSHAP), tanpa paket `shap`.
+
+```{r shap, fig.height=6}
+sv <- predict(final_xgb_model, xgb.DMatrix(X_test), predcontrib = TRUE)
+shap_imp <- sort(colMeans(abs(sv[, colnames(sv) != "BIAS"])), decreasing = TRUE)[1:15]
+ggplot(data.frame(f = factor(names(shap_imp), rev(names(shap_imp))), v = shap_imp), aes(v, f)) +
+  geom_col(fill = "#1f77b4") + theme_minimal() +
+  labs(title = "Global Feature Contribution (SHAP Values)", x = "mean(|SHAP value|)", y = NULL)
+```
+
+## Analisis Residual & Ekspor Model
+
+Sebaran residual dipakai untuk memeriksa pola error yang tersisa (misalnya bias atau heteroskedastisitas). Setelah itu model diekspor agar bisa dipakai kembali untuk simulasi skenario EWS.
+
+```{r residual}
+preds <- predict(final_xgb_model, xgb.DMatrix(X_test)); residuals <- y_test - preds
+ggplot(data.frame(p = preds, r = residuals), aes(p, r)) + geom_point(alpha = .5, color = "purple") +
+  geom_hline(yintercept = 0, linetype = 2) + theme_minimal() +
+  labs(title = "Residual Plot: Memastikan Tidak Ada Pola Error Tersembunyi", x = "Predicted SDCI", y = "Error (Actual - Predicted)")
+```
+
+# Model Evaluation
+
+## Evaluasi Stabilitas Fold & Rangkuman Metrik Global
+
+Tahap ini mengukur performa secara kuantitatif. Pertama, RMSE, MAE, dan $R^2$ per fold pada Time-Series Cross-Validation untuk melihat kestabilan lintas waktu. Kedua, metrik pada data latih dan data uji. Nilai $R^2$ pada data uji mendekati nol, artinya fitur ENSO lag-3 plus musiman hampir tidak menjelaskan variasi SDCI di luar pola musiman.
+
+```{r eval_fold}
+fold_metrics <- do.call(rbind, lapply(seq_along(folds), function(i) { f <- folds[[i]]
+  m <- xgb.train(make_params(best_params), xgb.DMatrix(X_train[f$tr, ], label = y_train[f$tr]), nrounds = best_params$nrounds, verbose = 0)
+  p <- predict(m, xgb.DMatrix(X_train[f$va, ]))
+  data.frame(Fold = paste0("Fold-", i), RMSE = RMSE(y_train[f$va], p), MAE = MAE(y_train[f$va], p), R2 = R2(y_train[f$va], p)) }))
+fold_metrics
+y_pred_train <- predict(final_xgb_model, xgb.DMatrix(X_train)); y_pred_test <- preds
+data.frame(Metric = c("RMSE", "MAE", "R2 Score"),
+  Train = c(RMSE(y_train, y_pred_train), MAE(y_train, y_pred_train), R2(y_train, y_pred_train)),
+  Test  = c(RMSE(y_test, y_pred_test),  MAE(y_test, y_pred_test),  R2(y_test, y_pred_test)))
+```
+
+## Visualisasi Reliabilitas Model (Time-Series Tracking)
+
+Grafik ini membandingkan SDCI aktual (biru) dengan prediksi XGBoost (merah putus-putus) pada periode uji. Celah di antara keduanya (area merah) memperlihatkan besar galat prediksi. Selisih yang besar menunjukkan model belum menangkap puncak dan lembah siklus kekeringan.
+
+```{r tracking, fig.width=11}
+ggplot() + geom_line(aes(dates_train, y_train), color = "gray", alpha = .4) +
+  geom_ribbon(aes(dates_test, ymin = pmin(y_test, y_pred_test), ymax = pmax(y_test, y_pred_test)), fill = "red", alpha = .1) +
+  geom_line(aes(dates_test, y_test, color = "Actual SDCI (Ground Truth)"), linewidth = 1) +
+  geom_line(aes(dates_test, y_pred_test, color = "XGBoost Prediction"), linewidth = 1, linetype = 2) +
+  geom_vline(xintercept = dates_test[1], linetype = 3) + scale_color_manual(values = c("#1f77b4", "#d62728")) + theme_minimal() +
+  labs(title = "National Drought Index (SDCI): Model Reliability Analysis", x = NULL, y = "SDCI Score", color = NULL)
+```
+
+## Diagnostik Asumsi Regresi Empiris
+
+Dua diagnostik regresi: scatter aktual vs prediksi (kiri) dan histogram residual (kanan). Titik yang tersebar jauh dari garis diagonal dan residual yang lebar menunjukkan daya prediksi terbatas; pemusatan residual di nol hanya menunjukkan tidak adanya bias rata-rata.
+
+```{r diagnostics, fig.width=11}
+op <- par(mfrow = c(1, 2))
+plot(y_test, y_pred_test, pch = 19, col = adjustcolor("darkcyan", .5), xlab = "Actual SDCI", ylab = "Predicted SDCI",
+     main = "Prediction Consistency (Actual vs Predicted)"); abline(lm(y_pred_test ~ y_test), col = "red"); abline(0, 1, lty = 3)
+hist(y_test - y_pred_test, breaks = 20, col = "purple", border = "white", main = "Residual Error Distribution (Normality)",
+     xlab = "Error Magnitude"); abline(v = 0, lty = 2)
+par(op)
+```
+
+## Global Feature Importance
+
+Feature importance bawaan XGBoost menampilkan 15 fitur teratas, sebagai pelengkap SHAP. Peringkat ini menunjukkan fitur yang paling sering dipakai model, bukan penyebab kekeringan.
+
+```{r importance, fig.height=6}
+imp <- head(as.data.frame(xgb.importance(model = final_xgb_model)), 15)
+ggplot(imp, aes(Gain, factor(Feature, rev(Feature)))) + geom_col(fill = "darkcyan", color = "black") + theme_minimal() +
+  labs(title = "Top 15 Drivers of National Drought (Feature Importance)", x = "Relative Importance Score", y = NULL)
+```
+
+## Perbandingan Akhir & Pemilihan Model Terbaik
+
+XGBoost hasil tuning dimasukkan ke tabel Comparatif (setara slide 6). Model dengan $R^2$ uji tertinggi dipilih sebagai model utama untuk tahap Future Inference.
+
+```{r final_compare}
+benchmark_results <- rbind(benchmark_results, met_row("XGBoost (tuned)", y_pred_test))
+benchmark_results <- benchmark_results[order(-benchmark_results$R2), ]
+knitr::kable(benchmark_results, digits = 4, row.names = FALSE, caption = "Perbandingan model pada data uji (setara slide 6)")
+cat("Model terbaik (R2 uji tertinggi):", benchmark_results$Model[1], "\n")
+stopifnot(grepl("XGBoost \\(tuned", benchmark_results$Model[1]))   # Quantile berikut memakai XGBoost terbaik
+```
+
+# Future Inference
+
+## Eksekusi Arsitektur Hibrida Tahap 2 (Quantile XGBoost)
+
+Memasuki tahap fungsional Early Warning System (EWS), arsitektur ditransisikan menggunakan fungsi objektif reg:quantileerror. Tiga model kuantil independen dilatih untuk membangun batas-batas probabilitas: Kuantil 10% (Skenario Pesimis/Batas Bawah), Kuantil 50% (Median/Tren Utama), dan Kuantil 90% (Skenario Optimis/Batas Atas).
+
+```{r quantile}
+oni_features <- grep("^ONI|^month_", colnames(X_train), value = TRUE)
+train_q_model <- function(alpha) xgb.train(make_params(best_params, objective = "reg:quantileerror", quantile_alpha = alpha, eta = .05),
+  xgb.DMatrix(X_train[, oni_features], label = y_train), nrounds = best_params$nrounds, verbose = 0)
+model_lower <- train_q_model(.1); model_med <- train_q_model(.5); model_upper <- train_q_model(.9)
+```
+
+## Simulasi Kenaikan Suhu Pasifik 2026 (Godzilla El Niño)
+
+Sebuah synthetic dataset dibuat untuk menyimulasikan eskalasi suhu Samudra Pasifik secara progresif selama tahun 2026. Fitur-fitur spasio-temporal (kinematika momentum dan akselerasi) kemudian diekstraksi dari data simulasi ini untuk menjadi input bagi model kuantil, menghasilkan matriks prediksi runtun waktu dari observasi awal hingga penghujung tahun 2026.
+
+```{r simulate}
+last_date <- max(df_master$date_key)
+future_dates <- seq(as.Date(format(last_date + 32, "%Y-%m-01")), by = "month", length.out = 12)
+simulated_oni <- tail(df_master$ONI, 1) + 0.15 * 1:12            # ASUMSI skenario, bukan forecast ONI
+hist_oni <- tail(df_master$ONI, 12 + H); all_oni <- c(hist_oni, simulated_oni)
+Ff <- apply(cbind(ONI = all_oni, as.matrix(create_advanced_temporal_features(all_oni, "ONI"))), 2, lagv, k = H)[(length(hist_oni) + 1):length(all_oni), ]
+mo <- as.integer(format(future_dates, "%m"))
+df_future <- cbind(Ff, month_sin = sin(2 * pi * mo / 12), month_cos = cos(2 * pi * mo / 12))[, oni_features]
+pq <- function(m, Xm) predict(m, xgb.DMatrix(Xm[, oni_features]))
+y_hist <- sapply(list(model_lower, model_med, model_upper), pq, Xm = X_all)
+y_fut  <- sapply(list(model_lower, model_med, model_upper), pq, Xm = df_future)
+```
+
+## Visualisasi Sistem Peringatan Dini EWS (Prophet-Style)
+
+```{r ews, fig.width=11, fig.height=5.5}
+tl_d <- c(dates_all, future_dates); q <- rbind(y_hist, y_fut)
+ews <- function(xlim, ylim, ttl) ggplot() + geom_ribbon(aes(tl_d, ymin = q[, 1], ymax = q[, 3], fill = "Interval Ketidakpastian (10%-90%)"), alpha = .2) +
+  geom_point(aes(df_engineered$date_key, df_engineered$SDCI_Indo), size = 1, alpha = .6) +
+  geom_line(aes(tl_d, q[, 2], color = "Tren Prediksi XGBoost"), linewidth = 1.2) +
+  geom_vline(xintercept = last_date, linetype = 2, alpha = .4) +
+  geom_hline(aes(yintercept = .3, linetype = "Ambang Batas Kritis (0.3)"), color = "#d62728") +
+  scale_color_manual(values = "#0072B2") + scale_fill_manual(values = "#0072B2") + scale_linetype_manual(values = 3) +
+  coord_cartesian(xlim = as.Date(xlim), ylim = ylim) + theme_minimal() + theme(legend.position = "bottom") +
+  labs(title = ttl, x = NULL, y = "Skor SDCI Nasional", color = NULL, fill = NULL, linetype = NULL)
+ews(c("2020-01-01", "2027-01-01"), c(0, 1.1), "Early Warning System: Proyeksi Indeks Kekeringan Nasional 2020 - 2026")
+```
+
+Proyeksi SDCI nasional 2026 ditampilkan dengan garis median dan pita ketidakpastian (kuantil 10%–90%) di bawah skenario ONI naik linear 0.15 per bulan (asumsi, bukan forecast ONI). Titik terendah proyeksi mendekati pola musiman biasa, sehingga bukan sinyal kekeringan ekstrem. Zoom 2026:
+
+```{r ews_zoom, fig.width=11, fig.height=5.5}
+ews(c("2026-01-01", "2027-01-01"), c(0.2, 0.9), "Early Warning System: Proyeksi Krisis Kekeringan Nasional 2026")
+puncak_idx <- which.min(y_fut[, 2])
+cat(sprintf("HASIL ANALISIS MODEL\nBulan Puncak Dampak : %s\nPrediksi Skor SDCI  : %.4f\nTingkat Keyakinan   : %.2f - %.2f\n",
+            format(future_dates[puncak_idx], "%B %Y"), min(y_fut[, 2]), y_fut[puncak_idx, 1], y_fut[puncak_idx, 3]))
+```
+
+# Ekspor hasil
+
+Semua angka di atas ditulis ke `hasil_R.json` (dipakai artikel `artikel_smds/` dan slide `docs/slide_src/`).
+
+```{r export}
+suppressMessages(library(jsonlite))
+slide_name <- c("ARIMA" = "ARIMA (Statistical Baseline)", "Prophet" = "Prophet (Meta Time-Series)",
+  "Random Forest" = "Random Forest (Bagging Baseline)", "LightGBM" = "LightGBM (Boosting Baseline)",
+  "XGBoost (default)" = "XGBoost (Boosting Default)", "Klimatologi" = "Klimatologi (rata-rata bulanan)")
+bm <- benchmark_results[benchmark_results$Model %in% names(slide_name), ]
+bench_json <- setNames(lapply(seq_len(nrow(bm)), function(i) list(RMSE = bm$RMSE[i], MAE = bm$MAE[i], `R2 Score` = bm$R2[i])), slide_name[bm$Model])
+mon_all <- format(dates_all, "%m")
+clim_fold <- do.call(rbind, lapply(seq_along(folds), function(i) { f <- folds[[i]]
+  p <- as.numeric(tapply(y_train[f$tr], mon_all[f$tr], mean)[mon_all[f$va]])
+  data.frame(Fold = paste0("Fold-", i), RMSE = RMSE(y_train[f$va], p), R2 = R2(y_train[f$va], p)) }))
+tr_df <- do.call(rbind, lapply(seq_along(trials), function(i) data.frame(number = i - 1, value = trials[[i]]$cv)))
+top5 <- head(tr_df[order(tr_df$value), ], 5)
+top5 <- do.call(rbind, lapply(top5$number, function(n) { p <- trials[[n + 1]]
+  data.frame(number = n, value = p$cv, n_estimators = p$nrounds, max_depth = p$max_depth, learning_rate = p$eta, subsample = p$subsample,
+             colsample_bytree = p$colsample_bytree, min_child_weight = p$min_child_weight, lambda = p$lambda, alpha = p$alpha, gamma = p$gamma) }))
+bt <- which.min(sapply(trials, `[[`, "cv")) - 1
+write_json(list(
+  fold = setNames(fold_metrics, c("Fold", "RMSE", "MAE", "R2 Score")),
+  clim_fold = clim_fold,
+  metrics = list(list(Metric = "RMSE", Train = RMSE(y_train, y_pred_train), Test = RMSE(y_test, y_pred_test)),
+                 list(Metric = "MAE", Train = MAE(y_train, y_pred_train), Test = MAE(y_test, y_pred_test)),
+                 list(Metric = "R2 Score", Train = R2(y_train, y_pred_train), Test = R2(y_test, y_pred_test))),
+  best_value = best_params$cv, best_trial = bt,
+  best_params = list(n_estimators = best_params$nrounds, max_depth = best_params$max_depth, learning_rate = best_params$eta,
+    subsample = best_params$subsample, colsample_bytree = best_params$colsample_bytree, min_child_weight = best_params$min_child_weight,
+    lambda = best_params$lambda, alpha = best_params$alpha, gamma = best_params$gamma),
+  top5 = top5,
+  importance = as.list(setNames(imp$Gain, imp$Feature)),
+  shap = as.list(shap_imp),
+  bench = bench_json,
+  hist_dates = format(dates_all), hist_med = y_hist[, 2], hist_low = y_hist[, 1], hist_high = y_hist[, 3],
+  fut_dates = format(future_dates), fut_med = y_fut[, 2], fut_low = y_fut[, 1], fut_high = y_fut[, 3], fut_oni = simulated_oni,
+  xgb_test_mae = MAE(y_test, y_pred_test), xgb_best_iter = as.numeric(best_iter) + 1,
+  n_fitur = ncol(X_all), n_train = length(y_train), n_test = length(y_test)
+), "hasil_R.json", auto_unbox = TRUE, digits = NA, pretty = TRUE)
+```

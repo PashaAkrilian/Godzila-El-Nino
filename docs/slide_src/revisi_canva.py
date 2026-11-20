@@ -1,6 +1,6 @@
 """Merevisi Slide_Presentasi (ekspor PDF dari Canva) TANPA menyentuh Canva.
 Judul, hiasan, dan latar asli dipertahankan; hanya tabel/grafik/angka yang tidak sesuai hasil terkoreksi yang diganti.
-Input : ../arsip/Slide_Presentasi_asli_canva.pdf, hasil_kaggle_full.json (keluaran kernel Kaggle ber-seed)
+Input : ../arsip/Slide_Presentasi_asli_canva.pdf, ../../R/hasil_R.json (keluaran R/godzila-el-nino.Rmd, seed 42)
 Output: ../Slide_Presentasi.pdf
 Jalankan dari folder ini:  python revisi_canva.py   (butuh pymupdf, matplotlib, pandas, numpy)"""
 import json, os, warnings
@@ -17,7 +17,7 @@ SRC, OUT = os.path.join(HERE, "../arsip/Slide_Presentasi_asli_canva.pdf"), os.pa
 FONT = {k: os.path.join(HERE, f"fonts/Poppins-{k}.ttf") for k in ("Regular", "Bold", "SemiBold")}
 for f in FONT.values(): fm.fontManager.addfont(f)
 plt.rcParams["font.family"] = "Poppins"
-R = json.load(open(os.path.join(HERE, "hasil_kaggle_full.json")))
+R = json.load(open(os.path.join(HERE, "../../R/hasil_R.json")))
 TMP = os.path.join(HERE, "_tmp"); os.makedirs(TMP, exist_ok=True)
 BLUE, YEL, GREYB, RED = "#0B5FFF", "#FFE033", "#4a4a4a", "#B2182B"
 fnum = lambda v, n=4: f"{v:.{n}f}".replace("-", "−")   # titik desimal seperti slide asli, minus tipografis
@@ -51,13 +51,13 @@ bench = R["bench"]; m = {r["Metric"]: r for r in R["metrics"]}
 order = [("ARIMA", "ARIMA (Statistical Baseline)"), ("Prophet", "Prophet (Meta Time-Series)"), ("Random Forest", "Random Forest (Bagging Baseline)"),
          ("LightGBM", "LightGBM (Boosting Baseline)"), ("XGBoost (default)", "XGBoost (Boosting Default)"), ("Klimatologi", "Klimatologi (rata-rata bulanan)")]
 rows6 = [[n, fnum(bench[k]["RMSE"]), fnum(bench[k]["MAE"]), fnum(bench[k]["R2 Score"])] for n, k in order]
-rows6.append(["XGBoost (Optuna)", fnum(m["RMSE"]["Test"]), fnum(m["MAE"]["Test"]), fnum(m["R2 Score"]["Test"])])
+rows6.append(["XGBoost (tuned)", fnum(m["RMSE"]["Test"]), fnum(m["MAE"]["Test"]), fnum(m["R2 Score"]["Test"])])
 table_img(f"{TMP}/t6.png", 728, 471, ["MODEL", "RMSE", "MAE", "R-SQUARED (R²)"], rows6, [2.3, 1.2, 1.2, 1.7], hl_rows=(6,), fs=17, hfs=15, gap=5)
 
 bp = R["best_params"]
 rows9 = [[k, str(bp[k]) if isinstance(bp[k], int) else f"{bp[k]:.5f}"] for k in ["n_estimators", "max_depth", "learning_rate", "subsample", "colsample_bytree", "min_child_weight", "lambda", "alpha", "gamma"]]
 table_img(f"{TMP}/t9.png", 686, 548, ["HYPERPARAMETER", "NILAI TERBAIK"], rows9, [1.0, 1.0], fs=17, hfs=15, gap=5, first_bold=True, pad_top=48,
-          footer=f"RMSE validasi walk-forward terbaik {R['best_value']:.4f}  ·  percobaan #{R['best_trial']} dari 50")
+          footer=f"RMSE validasi walk-forward terbaik {R['best_value']:.4f}  ·  percobaan #{R['best_trial']} dari 50 (random search)")
 
 F = R["fold"]
 _d = pd.read_csv(os.path.join(HERE, "../../data/master_dataset_godzilla_elnino_2000_2025.csv"), parse_dates=["date_key"])
@@ -132,6 +132,7 @@ swap_text(4, (907, 490, 970, 560), "40", "Bold", 50)                            
 swap_text(6, (1249, 594, 1321, 670), "44", "Bold", 54.4)                                # slide 7: 72 -> 44 fitur
 swap_text(6, (967, 254, 1416, 303), "Dikeluarkan (kebocoran)", "Bold", 35, (0.70, 0.09, 0.19))
 swap_text(6, (1031, 303, 1360, 352), "NDVI, LST, Precip", "Bold", 35, (0.70, 0.09, 0.19))
+swap_text(8, (100, 160, 1045, 245), "Pencarian Hiperparameter", "Bold", 56, (0.043, 0.039, 0.039))                 # slide 9: judul tanpa "Optuna" (R tidak punya Optuna)
 swap_images(5, [((356, 247, 1084, 718), f"{TMP}/t6.png")])
 swap_images(8, [((377, 215, 1063, 763), f"{TMP}/t9.png")])
 swap_images(9, [((131, 207, 1313, 787), f"{TMP}/t10.png")])
@@ -144,8 +145,8 @@ swap_images(13, [((138, 136, 884, 729), f"{TMP}/t14.png")])
 p = doc[14]; p.add_redact_annot(fitz.Rect(285, 212, 1160, 785)); p.apply_redactions(images=NONE, graphics=0)
 QUOTE1 = "“Prediction is very difficult, especially if it's about the future.” — Niels Bohr."
 BODY = ("Namun, setelah kebocoran target dibuang, ENSO tidak terbukti memprediksi kekeringan nasional tiga bulan ke depan lebih baik daripada klimatologi "
-        "(R² uji 0,037 vs −0,051). ONI berpengaruh pada bulan yang sama, terutama di Jawa dan Nusa Tenggara. Proyeksi 2026 (SDCI September 0,529; "
-        "rentang 0,41–0,68) tidak lebih kering dari pola musiman. Mengetahui batas model adalah langkah awal, karena")
+        "(R² uji 0,070 vs −0,051). ONI berpengaruh pada bulan yang sama, terutama di Jawa dan Nusa Tenggara. Proyeksi 2026 (SDCI September 0,399; "
+        "rentang 0,36–0,54) di bawah rata-rata historis September (0,49) tetapi di atas ambang kritis 0,3. Mengetahui batas model adalah langkah awal, karena")
 QUOTE2 = "“The first step toward change is awareness.” — Nathaniel Branden."
 def put(rect, text, font, size, color):
     return p.insert_textbox(fitz.Rect(*rect), text, fontsize=size, fontname="pp" + font[:1], fontfile=FONT[font], color=color, align=0)

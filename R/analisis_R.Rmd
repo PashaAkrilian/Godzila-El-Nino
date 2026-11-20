@@ -9,6 +9,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+.libPaths(c("~/R/lib", .libPaths()))  # lokasi lokal paket; abaikan jika paket sudah terpasang global
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 3.6, dpi = 120)
 for (p in c("lmtest", "sandwich", "dplyr", "tidyr", "ggplot2"))
   if (!requireNamespace(p, quietly = TRUE)) install.packages(p, repos = "https://cloud.r-project.org")
