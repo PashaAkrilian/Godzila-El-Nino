@@ -23,20 +23,6 @@ The key innovation of this research is the introduction of **Climate Kinematics 
 
 ---
 
-# Team Members
-
-### Team LogLoss
-
-| Name | Role |
-|--------|--------|
-| **Dimas Pasha Akrilian** | Team Leader, Data Scientist, Model Development |
-| **Shata Alwan Jalaluddin** | Data Engineering, Climate Feature Engineering |
-| **Galih Kusuma Wijaya** | Anggota tim |
-
-**Institution:** Universitas Negeri Semarang (UNNES)
-
----
-
 # Problem Statement
 
 Extreme ENSO events (El Niño Southern Oscillation) can significantly reduce rainfall across Indonesia and trigger widespread drought conditions.
@@ -208,21 +194,6 @@ This enables stakeholders to understand which climate variables most strongly in
 
 ---
 
-# Key Contributions
-
-### Dimas Pasha Akrilian
-- Project Leadership
-- Research Design
-- XGBoost Development
-- Bayesian Optimization
-
-### Shata Alwan Jalaluddin
-- Climate Data Engineering
-- Feature Engineering
-- Data Integration
-
----
-
 # Future Work
 
 Potential improvements include:
@@ -237,15 +208,3 @@ Potential improvements include:
 # License
 
 This project is licensed under the MIT License.
-
----
-
-# Authors
-
-**Dimas Pasha Akrilian**  
-**Shata Alwan Jalaluddin**  
-**Galih Kusuma Wijaya**
-
-Department of Statistics and Data Science  
-Faculty of Mathematics and Natural Sciences  
-Universitas Negeri Semarang (UNNES)
