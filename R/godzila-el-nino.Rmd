@@ -292,7 +292,7 @@ SHAP (Shapley values) dipakai untuk menjelaskan kontribusi tiap fitur terhadap p
 
 ```{r shap, fig.height=6}
 sv <- predict(final_xgb_model, xgb.DMatrix(X_test), predcontrib = TRUE)
-shap_imp <- sort(colMeans(abs(sv[, colnames(sv) != "BIAS"])), decreasing = TRUE)[1:15]
+shap_imp <- sort(colMeans(abs(sv[, !colnames(sv) %in% c("BIAS", "(Intercept)")])), decreasing = TRUE)[1:15]
 ggplot(data.frame(f = factor(names(shap_imp), rev(names(shap_imp))), v = shap_imp), aes(v, f)) +
   geom_col(fill = "#1f77b4") + theme_minimal() +
   labs(title = "Global Feature Contribution (SHAP Values)", x = "mean(|SHAP value|)", y = NULL)

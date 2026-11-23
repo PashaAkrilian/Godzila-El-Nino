@@ -173,7 +173,6 @@
     "sst_anomaly_lag_5": 0.00907350056015409
   },
   "shap": {
-    "(Intercept)": 0.613767445087433,
     "month_sin": 0.0464449358463753,
     "month_cos": 0.0440748599357903,
     "ONI_momentum_3": 0.0053885510773398,
@@ -187,7 +186,8 @@
     "sst_anomaly_roll_min_3": 0.00168972149646531,
     "ONI_roll_min_6": 0.00152059960006833,
     "ONI_lag_1": 0.00149753283221798,
-    "ONI_roll_max_6": 0.00137666354518539
+    "ONI_roll_max_6": 0.00137666354518539,
+    "sst_anomaly_lag_6": 0.00132298236530914
   },
   "bench": {
     "LightGBM (Boosting Baseline)": {
