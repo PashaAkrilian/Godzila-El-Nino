@@ -156,3 +156,4 @@ for dx, dy, col in [(3, 3, (0, 0, 0)), (2, 2, (0, 0, 0)), (1, 1, (0, 0, 0)), (0,
     put((296 + dx, 590 + dy, 1150 + dx, 700 + dy), QUOTE2, "Bold", 21, col)
 
 doc.save(OUT, garbage=3, deflate=True); print("saved", OUT, len(doc), "halaman")
+import subprocess, sys; subprocess.run([sys.executable, os.path.join(HERE, "hapus_logo_unity.py")], check=True)  # logo UNITY dihapus dari slide 1 dan 16
