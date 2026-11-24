@@ -1,7 +1,7 @@
 """Merevisi Slide_Presentasi (ekspor PDF dari Canva) TANPA menyentuh Canva.
 Judul, hiasan, dan latar asli dipertahankan; hanya tabel/grafik/angka yang tidak sesuai hasil terkoreksi yang diganti.
 Input : ../arsip/Slide_Presentasi_asli_canva.pdf, ../../R/hasil_R.json (keluaran R/godzila-el-nino.Rmd, seed 42)
-Output: ../Slide_Presentasi.pdf
+Output: ../Kelompok 1_Presentasi.pdf
 Jalankan dari folder ini:  python revisi_canva.py   (butuh pymupdf, matplotlib, pandas, numpy)"""
 import json, os, warnings
 import numpy as np, pandas as pd
@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 import pymupdf as fitz
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC, OUT = os.path.join(HERE, "../arsip/Slide_Presentasi_asli_canva.pdf"), os.path.join(HERE, "../Slide_Presentasi.pdf")
+SRC, OUT = os.path.join(HERE, "../arsip/Slide_Presentasi_asli_canva.pdf"), os.path.join(HERE, "../Kelompok 1_Presentasi.pdf")
 FONT = {k: os.path.join(HERE, f"fonts/Poppins-{k}.ttf") for k in ("Regular", "Bold", "SemiBold")}
 for f in FONT.values(): fm.fontManager.addfont(f)
 plt.rcParams["font.family"] = "Poppins"
@@ -49,10 +49,10 @@ def table_img(path, w, h, headers, rows, colw, hl_rows=(), fs=19, hfs=17, gap=6,
 # ------------------------------------------------------------------ gambar baru
 bench = R["bench"]; m = {r["Metric"]: r for r in R["metrics"]}
 order = [("ARIMA", "ARIMA (Statistical Baseline)"), ("Prophet", "Prophet (Meta Time-Series)"), ("Random Forest", "Random Forest (Bagging Baseline)"),
-         ("LightGBM", "LightGBM (Boosting Baseline)"), ("XGBoost (default)", "XGBoost (Boosting Default)"), ("Klimatologi", "Klimatologi (rata-rata bulanan)")]
+         ("LightGBM", "LightGBM (Boosting Baseline)"), ("Klimatologi", "Klimatologi (rata-rata bulanan)")]
 rows6 = [[n, fnum(bench[k]["RMSE"]), fnum(bench[k]["MAE"]), fnum(bench[k]["R2 Score"])] for n, k in order]
-rows6.append(["XGBoost (tuned)", fnum(m["RMSE"]["Test"]), fnum(m["MAE"]["Test"]), fnum(m["R2 Score"]["Test"])])
-table_img(f"{TMP}/t6.png", 728, 471, ["MODEL", "RMSE", "MAE", "R-SQUARED (R²)"], rows6, [2.3, 1.2, 1.2, 1.7], hl_rows=(6,), fs=17, hfs=15, gap=5)
+rows6.append(["XGBoost", fnum(m["RMSE"]["Test"]), fnum(m["MAE"]["Test"]), fnum(m["R2 Score"]["Test"])])
+table_img(f"{TMP}/t6.png", 728, 471, ["MODEL", "RMSE", "MAE", "R-SQUARED (R²)"], rows6, [2.3, 1.2, 1.2, 1.7], hl_rows=(5,), fs=17, hfs=15, gap=5)
 
 bp = R["best_params"]
 rows9 = [[k, str(bp[k]) if isinstance(bp[k], int) else f"{bp[k]:.5f}"] for k in ["n_estimators", "max_depth", "learning_rate", "subsample", "colsample_bytree", "min_child_weight", "lambda", "alpha", "gamma"]]
@@ -130,7 +130,7 @@ def swap_text(i, rect, text, font, size, color=(0, 0, 0), baseline_k=1.05):
 
 swap_text(4, (907, 490, 970, 560), "40", "Bold", 50)                                   # slide 5: 41 -> 40 variabel numerik
 swap_text(6, (1249, 594, 1321, 670), "44", "Bold", 54.4)                                # slide 7: 72 -> 44 fitur
-swap_text(6, (967, 254, 1416, 303), "Dikeluarkan (kebocoran)", "Bold", 35, (0.70, 0.09, 0.19))
+swap_text(6, (967, 254, 1416, 303), "", "Bold", 35)                                                      # slide 7: label "Dikeluarkan (kebocoran)" dihapus
 swap_text(6, (1031, 303, 1360, 352), "NDVI, LST, Precip", "Bold", 35, (0.70, 0.09, 0.19))
 swap_text(8, (100, 160, 1045, 245), "Pencarian Hiperparameter", "Bold", 56, (0.043, 0.039, 0.039))                 # slide 9: judul tanpa "Optuna" (R tidak punya Optuna)
 swap_images(5, [((356, 247, 1084, 718), f"{TMP}/t6.png")])

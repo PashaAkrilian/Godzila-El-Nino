@@ -129,7 +129,7 @@ notebooks/              godzila-el-nino.ipynb: versi Python (Kaggle) dengan Optu
 data/                   master_dataset_godzilla_elnino_2000_2025.csv
 artikel_smds/           Artikel SMDS: main.tex/main.pdf (English), main_id.tex/main_id.pdf (Indonesia),
                         figs/ dan figs_en/, SMDSBib.bib, buat_figur.py (gambar dari data dan R/hasil_R.json)
-docs/                   Laporan_Akhir.pdf, Slide_Presentasi.pdf (revisi dengan angka R)
+docs/                   Laporan_Akhir.pdf, Kelompok 1_Presentasi.pdf (revisi dengan angka R)
 docs/arsip/             Slide_Presentasi_asli_canva.pdf (ekspor Canva asli)
 docs/slide_src/         revisi_canva.py (menyunting PDF asli memakai R/hasil_R.json), fonts/
 ```

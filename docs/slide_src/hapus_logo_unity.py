@@ -1,13 +1,13 @@
 """Hapus logo "UNITY #14" dari slide 1 dan 16, pertahankan lencana UNNES.
 Kotak putih berujung bulat yang tadinya memuat dua logo dipersempit sebatas lencana UNNES.
 Pakai:  python hapus_logo_unity.py [masuk.pdf] [keluar.pdf]   (butuh pymupdf)
-Default: mengubah ../Slide_Presentasi.pdf menjadi ../Slide_Presentasi.pdf (simpan cadangan dulu).
+Default: mengubah ../Kelompok 1_Presentasi.pdf menjadi ../Kelompok 1_Presentasi.pdf (simpan cadangan dulu).
 Dibuat untuk ekspor Canva dengan tata letak ini: gambar logo 400x157 px, lencana 180x240 px."""
 import os, sys
 import pymupdf as fitz
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "../Slide_Presentasi.pdf")
+SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "../Kelompok 1_Presentasi.pdf")
 OUT = sys.argv[2] if len(sys.argv) > 2 else SRC
 PAGES = (0, 15)  # slide 1 dan slide 16
 UNITY_PX, CREST_PX = (400, 157), (180, 240)
