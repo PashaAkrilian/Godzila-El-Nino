@@ -144,16 +144,22 @@ swap_images(13, [((138, 136, 884, 729), f"{TMP}/t14.png")])
 # slide 15: kesimpulan (teks putih dengan bayangan hitam seperti aslinya)
 p = doc[14]; p.add_redact_annot(fitz.Rect(285, 212, 1160, 785)); p.apply_redactions(images=NONE, graphics=0)
 QUOTE1 = "“Prediction is very difficult, especially if it's about the future.” — Niels Bohr."
-BODY = ("Namun, setelah kebocoran target dibuang, ENSO tidak terbukti memprediksi kekeringan nasional tiga bulan ke depan lebih baik daripada klimatologi "
-        "(R² uji 0,070 vs −0,051). ONI berpengaruh pada bulan yang sama, terutama di Jawa dan Nusa Tenggara. Proyeksi 2026 (SDCI September 0,399; "
-        "rentang 0,36–0,54) di bawah rata-rata historis September (0,49) tetapi di atas ambang kritis 0,3. Mengetahui batas model adalah langkah awal, karena")
+BODY = ("Hasil kami menunjukkan hal serupa. Tanpa komponen penyusun SDCI, XGBoost hanya sedikit lebih baik daripada klimatologi (R² uji 0,070 vs −0,051), "
+        "sehingga ENSO belum terbukti mampu memprediksi kekeringan nasional tiga bulan ke depan. Pengaruh ONI justru terasa pada bulan yang sama, "
+        "terutama di Jawa dan Nusa Tenggara. Pada skenario ONI terus naik, September 2026 cenderung lebih kering dari biasanya (SDCI 0,399; rentang 0,36–0,54; "
+        "rata-rata historis 0,49), tetapi masih di atas ambang kritis 0,3. Menyadari batas ini adalah langkah awal untuk bersiap, karena")
 QUOTE2 = "“The first step toward change is awareness.” — Nathaniel Branden."
 def put(rect, text, font, size, color):
     return p.insert_textbox(fitz.Rect(*rect), text, fontsize=size, fontname="pp" + font[:1], fontfile=FONT[font], color=color, align=0)
+# paragraf rata kanan-kiri; kutipan penutup menyambung langsung setelah "karena"
+CSS = ("@font-face {font-family: pp; src: url(Poppins-Regular.ttf);} @font-face {font-family: pp; src: url(Poppins-Bold.ttf); font-weight: bold;}"
+       "p {font-family: pp; font-size: 22px; line-height: 1.3; text-align: justify; margin: 0;}")
+ARCH = fitz.Archive(os.path.join(HERE, "fonts"))
 for dx, dy, col in [(3, 3, (0, 0, 0)), (2, 2, (0, 0, 0)), (1, 1, (0, 0, 0)), (0, 0, (1, 1, 1))]:
     put((296 + dx, 218 + dy, 1150 + dx, 300 + dy), QUOTE1, "Bold", 21, col)
-    put((296 + dx, 312 + dy, 1150 + dx, 640 + dy), BODY, "Regular", 24, col)
-    put((296 + dx, 590 + dy, 1150 + dx, 700 + dy), QUOTE2, "Bold", 21, col)
+    css = CSS + "p {color: #%02x%02x%02x;}" % tuple(int(255 * c) for c in col)
+    spare, _ = p.insert_htmlbox(fitz.Rect(296 + dx, 292 + dy, 1150 + dx, 700 + dy), f"<p>{BODY} <b>{QUOTE2}</b></p>", css=css, archive=ARCH, scale_low=1)
+    assert spare >= 0, "teks kesimpulan tidak muat"
 
 doc.save(OUT, garbage=3, deflate=True); print("saved", OUT, len(doc), "halaman")
 import subprocess, sys; subprocess.run([sys.executable, os.path.join(HERE, "hapus_logo_unity.py")], check=True)  # logo UNITY dihapus dari slide 1 dan 16
